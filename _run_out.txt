@@ -1,0 +1,19 @@
+psxrecomp: idle_skip disabled
+psxrecomp: overlay_region_floor = 0xAC000 (game text end), text_image_lo = 0x10000
+psxrecomp: loaded game config <repo>\RidgeRacer4Recomp\game.toml (RidgeRacer4, SLUS-00797)
+psxrecomp: additive overlay capture store = <repo>\RidgeRacer4Recomp\overlay_captures.json (+ .d history)
+psxrecomp: tcc tier active but no bundled toolchain at <repo>\RidgeRacer4Recomp\overlay_toolchain (overlay gaps -> interpreter)
+psxrecomp runtime: loading BIOS from <repo>\RidgeRacer4Recomp\bios/openbios.bin
+psxrecomp: renderer = opengl (opengl)
+psxrecomp: renderer backend requested: opengl
+psxrecomp: disc region NTSC-U (serial SLUS-00797)
+psxrecomp: text image guard armed (0x80010000..0x800AC000, disc SLUS_007.97)
+[Keybinds] Loaded <repo>\RidgeRacer4Recomp\keybinds.ini
+psxrecomp: host panel 240.0 Hz does not match guest cadence; keeping 59.94 Hz pacing
+psxrecomp: OpenGL context created (3.3.0 NVIDIA 621.01)
+psxrecomp: GL GPU pipeline ready (internal scale 1x, mask-bit stencil, texture window, GPU copy/upload)
+psxrecomp: GL temporal frame blending disabled (host 240.0 Hz)
+psxrecomp: present cadence: wall-clock pacer (16.6834 ms/frame); driver vsync off on 240 Hz panel
+psxrecomp: bios_backend=LLE (recompiled BIOS)  bios_boot=LLE (real intro)  image=OPENBIOS
+psxrecomp runtime: executing from PC=0xBFC00000
+psxrecomp: thread scheduler = HLE (deterministic TCB) (PSX_HLE_SCHEDULER)

@@ -1,0 +1,59 @@
+# psxrecomp user settings - written by the launcher. Safe to hand-edit.
+# Overrides the bundled game.toml; the command line overrides this file.
+
+[video]
+renderer          = "opengl"
+supersampling     = 1
+window_width      = 960
+antialiasing      = true
+texture_filtering = "nearest"
+fmv_filter        = "nearest"
+geometry_correction   = false
+perspective_texturing = false
+crt_filter        = "raw"
+scanlines         = false
+scanline_strength = 0.5
+fast_boot         = false
+bios_hle          = false
+fullscreen        = 0
+frame_interpolation = false
+frame_interpolation_fps = 0
+aspect_ratio      = "4:3"
+rewind            = false
+rewind_depth      = 50
+rewind_interval   = 15
+
+[audio]
+frequency = 44100
+spu_hq = false
+
+[hotkeys]
+rewind_pad = 1272
+save_state_menu_pad = 2040
+
+[launcher]
+skip_launcher = true
+
+[disc]
+path = "disc/R4 - Ridge Racer Type 4 (USA).bin"
+
+[memcard]
+dir     = "RidgeRacer4Recomp"
+card1   = "RidgeRacer4Recomp/card1.mcd"
+card2   = "RidgeRacer4Recomp/card2.mcd"
+enable1 = true
+enable2 = true
+
+[controller]
+p1_device = "0300938d5e040000ff02000000007200"
+p1_mode   = "analog"
+p1_deadzone = 3276
+p2_device = "none"
+p2_mode   = "analog"
+p2_deadzone = 3276
+multitap  = true
+multitap_analog = true
+deadzone  = 3276
+
+[localization]
+language = "en"

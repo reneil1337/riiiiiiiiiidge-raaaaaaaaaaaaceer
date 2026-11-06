@@ -1,0 +1,160 @@
+---
+title: Controls
+description: Pad, keyboard and touch mappings for the browser, native and fallback paths.
+---
+
+There is no single input layer. The browser page, the browser netplay handoff,
+the native runtime and the host-stream fallback each have their own bindings.
+
+## Browser (`/play`, EmulatorJS)
+
+Controls are EmulatorJS's own. Open its control settings to see or remap:
+
+- **Xbox / PlayStation pad:** left stick or D-pad, face buttons, triggers,
+  Start and Select.
+- **Keyboard:** EmulatorJS defaults; remap per button.
+- **Touch:** EmulatorJS virtual gamepad where enabled.
+- **Fullscreen / save / load / netplay:** the EmulatorJS menu.
+
+A pad connected before the page loads is now assigned into an empty slot by
+`play.js` (since 2026-11-06; no harness covers it yet). If it does not respond,
+open **Control Settings** and select the pad. After dismissing **CLICK TO RACE**,
+click the game canvas before using Start/keyboard; the gate does not focus
+EmulatorJS. The first `keydown` and the first gamepad button also unlock audio,
+not only a pointer click, and the volume defaults to 70 % on a fresh profile.
+
+For Type 4, the natural mapping is Cross = accelerate, Circle/Square = brake,
+Triangle = view, Start = pause, and Select = rear view / menu (**unverified**).
+
+## Browser netplay (`/play-net`, 2P lounge)
+
+In a lounge race the host is **Player 1** and the guest is **Player 2**. Both
+tabs run EmulatorJS 4.3.0-pre, but only the host core actually runs the race; the
+guest core is frozen and relays its pad.
+
+| Side | EmulatorJS player | What it can do |
+| --- | --- | --- |
+| Host | `0` (Player 1) | drives P1, runs the VS Battle menu macro, signals `race-live` |
+| Guest | `1` (Player 2) | drives P2 only after `race-live`; input is dropped before that |
+
+- The macro presses buttons through
+  `EJS_emulator.gameManager.functions.simulateInput(player, index, value)`.
+  Player 2 presses must use player index `1`; the host car uses `0`.
+- Guests are gated: `gameManager.simulateInput` is wrapped and returns early
+  until the host sends `race-live`, so an early pad press cannot move the host's
+  car-select cursor. Check `window.__R4MP.raceLive` and
+  `window.__R4MP.blockedGuestInputs` in the guest console.
+- Both sides keep their own local pad/keyboard bindings from the table above; the
+  relay only carries the guest's pad word to the host as Player 2.
+- The stage log (`AUTO RACE n: <stage>`) on the host and `HOST STAGE: <stage>` on
+  the guest are the fastest way to see which menu step is active.
+- The collapsed **chip** shows the seat, room and `P2 LOCKED`/`P2 LIVE` plus the
+  host's stage. Next to it, **REMATCH** (mouse/touch) reloads the lounge for
+  another race — each player clicks it on their own tab.
+- Manual `/play-net` panel joins (no `mpRole`/`mpRoom`) are not gated: the guest
+  drives immediately because no host macro is running.
+
+Details: [2P lounge & race handoff](/multiplayer/lounge).
+
+## Native recomp
+
+The runtime ships with a DualShock-style mapping in `input.ini` and a keyboard
+fallback in `keybinds.ini`.
+
+| PlayStation | Xbox pad | Keyboard |
+| --- | --- | --- |
+| D-pad | D-pad / left stick | Arrow keys |
+| Cross | A | `X` |
+| Circle | B | `S` |
+| Square | X | `Z` |
+| Triangle | Y | `A` |
+| L1 / R1 | LB / RB | `Q` / `W` |
+| L2 / R2 | LT / RT | `E` / `R` |
+| L3 / R3 | LS / RS click | `T` / `Y` |
+| Start | Menu | `Return` |
+| Select | View | `Right Shift` |
+| Left stick | Left stick | Arrow keys |
+| Right stick | Right stick | unbound |
+
+The workspace is configured for **analog** mode (`p1_mode = "analog"`), so the
+left stick steers and the D-pad still works.
+
+### Change the pad
+
+1. Open the native launcher.
+2. Player 1 → device dropdown.
+3. Pick **Keyboard** or the connected controller.
+4. Pick **Analog** or **D-Pad**.
+5. Press **Launch Game**.
+
+The launcher writes `settings.toml`. If a pad is reconnected and not detected,
+set `p1_device = "gamepad"` or reselect it.
+
+### Change a key
+
+Edit `RidgeRacer4Recomp\keybinds.ini` and restart. Use SDL key names, or `None`
+to leave an input unbound. `input.ini` carries the SDL game-controller mapping
+and previously used pads.
+
+## Host-stream fallback (`/lobby`)
+
+The native seat relay lives on the old lobby page at `/lobby`, not at `/`. `/` is
+the ENTER shell; its **LOBBY** button loads `/lobby` in the cabinet frame.
+
+### Keyboard layouts
+
+| Action | P1 | P2 |
+| --- | --- | --- |
+| D-pad | Arrows | `I` `J` `K` `L` |
+| Cross / Circle | `X` / `S` | `N` / `M` |
+| Square / Triangle | `Z` / `A` | `,` / `H` |
+| L1 / R1 | `Q` / `W` | `U` / `O` |
+| L2 / R2 | `E` / `R` | `P` / `;` |
+| L3 / R3 | `T` / `Y` | unbound |
+| Start / Select | `Enter` / `Right Shift` | `Backspace` / `Tab` |
+
+The **CONTROLLER** panel has a keyboard-layout selector:
+
+- **Auto (seat):** P1 uses P1 keys, P2 uses P2 keys. Spectators get P1.
+- **P1 layout / P2 layout:** force one layout regardless of seat.
+
+These are browser-side keys. The server converts the resulting PSX pad word to
+the native pads with a **hard-coded VK map in `_server/src/input.js`** (P1 and P2
+tables); it does **not** parse `game/keybinds.ini` at runtime — that file is the
+native game's own keyboard layout, not the relay's source. Because the relay uses
+global `keybd_event`, the host's physical keyboard also drives the focused game
+window.
+
+### Gamepads
+
+Connect the pad and press a button; the browser Gamepad API reports it. The UI
+detects Xbox vs PlayStation, labels the face buttons correctly, maps the left
+stick, triggers, D-pad, Start/Select, L3/R3, and offers a rumble test. The
+**CONTROLLER** panel selects the first or second pad.
+
+No driver or companion app is installed. The browser must support the Gamepad
+API. Chromium exposes it on a plain-HTTP LAN URL; some browsers require HTTPS or
+`localhost`. If a pad is not detected, test on the host at
+`http://localhost:8080/lobby`.
+
+### Touch
+
+Phones/tablets get an on-screen D-pad, face buttons, L1/L2/R1/R2, Select and
+Start. It is enabled on coarse-pointer devices and can be toggled with **TOUCH
+PAD**. Multi-touch is supported.
+
+### Shortcuts
+
+| Key | Action |
+| --- | --- |
+| `F` | Toggle browser fullscreen |
+| `Esc` | Exit fullscreen / close modal |
+| `M` | Mute/unmute stream audio |
+| `H` | Open controls/help |
+
+Fullscreen applies to the **browser**, not the host game window. The native
+cabinet stays windowed and topmost so the capture stays clean.
+
+In the cabinet shell the `F` shortcut also works **while the game frame has
+focus** — the shell mirrors the key from the iframe and fullscreens the whole
+cabinet, not just the stage.

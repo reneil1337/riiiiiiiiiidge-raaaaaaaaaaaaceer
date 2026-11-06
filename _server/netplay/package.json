@@ -1,0 +1,23 @@
+{
+  "name": "rr4-netplay-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LAN EmulatorJS netplay relay for Ridge Racer Type 4 (upstream EmulatorJS-Netplay server.js + local health/ops wrapper).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node serve-test.mjs",
+    "test": "node test-netplay.mjs",
+    "test:43": "node test-netplay-43.mjs",
+    "test:psx": "node test-netplay-psx.mjs",
+    "test:play": "node test-play-net.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  }
+}

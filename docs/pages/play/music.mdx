@@ -1,0 +1,158 @@
+---
+title: Music player
+description: The ENTER gate, R4 intro theme, per-game playlists and the soundtrack server.
+---
+
+The browser app has a soundtrack player built around the three discs. It starts
+with a deliberate **ENTER THE CABINET** gate: the first click is the browser
+gesture that unlocks audio, then the player starts the Ridge Racer Type 4 intro
+song **"You The One For Me"** and continues through the active game's playlist.
+
+<img src="/docs/img/screens/music-player.png" alt="The soundtrack player: NOW PLAYING, You The One For Me, Ridge Racer Type 4, transport buttons, volume slider and ON AIR looping side" />
+
+<div className="rr-route"><b>ENTER gate</b>  (one click = audio permission)
+   └─ R4 intro: "You The One For Me"
+        └─ active game playlist  (r4 / rage / ridge)
+             ├─ track ends → next track
+             └─ GAME selector changes → new playlist + new theme</div>
+
+## Persistent cabinet shell
+
+The default page **`/`** is the R4 **cabinet entry** shell, not the old lobby.
+The ENTER click starts the soundtrack in the parent document. The first view is
+**WELCOME TO RIDGE CITY** (`/welcome`), the paddock hub. From there you can roam
+to **GAMES** (`/games`, machine check), the **2P LOUNGE** (`/multiplayer`),
+**PLAY**, **DOCS** or **LOBBY** (`/lobby`). No game starts until you choose
+**START** or **CHECK DISC DECK**. Every view — including the docs and the
+`/play-net` race handoff — loads inside the same iframe, so navigating does not
+stop the audio.
+
+The shell top bar is the only top bar. When it loads a `/play` or `/play-net`
+document it injects a stylesheet that hides `#play-bar` and `#play-foot` and
+gives the stage their space, so the user never sees stacked app menus. The parent
+document owns the only `HTMLAudioElement`; the embedded game page must not create
+a second one.
+
+Every refresh returns to **ENTER**; the gate is never persisted in
+`sessionStorage`/`localStorage`. The page always starts in **Ridge Racer Type 4**
+mode, with the R4 intro.
+
+Direct `/play` still has its own standalone ENTER gate for links that bypass the
+shell. The shell passes `?embedded=1&threads=0` so `/play` does not create a
+second audio element or a second gate, and so the frame uses the non-threaded
+core. The same `embedded=1` flag rides on the `/play-net?…mp*` race handoff.
+
+## What starts when
+
+| Moment | What plays |
+| --- | --- |
+| Page load | Nothing — browsers block autoplay before a gesture |
+| Click **ENTER** | R4 intro track (`r4/intro-you-the-one-for-me.mp3`) — always first |
+| First view | **WELCOME TO RIDGE CITY** hub; no disc starts yet |
+| Choose **START** | That game's playlist and the game view |
+| 2P LOUNGE → both READY | The same audio element keeps playing while the frame switches to `/play-net` |
+| Intro ends | The active game's playlist, in order (R4 continues with the rest of the R4 list) |
+| GAME → **Rage Racer** | Rage Racer playlist; the page switches to the Rage theme |
+| GAME → **Ridge Racer 1994** | Ridge Racer playlist; the page switches to the 1994 arcade theme |
+| GAME → **Type 4** | R4 playlist again, starting at the intro |
+| **SKIP AUDIO** | Gate closes without playing; the compact player is still available |
+
+The player uses one `HTMLAudioElement`; it does not run a second audio context
+for the game. The emulator's own audio is separate, so the soundtrack and the
+game's engine/effects can be mixed with the volume control.
+
+While a `/play` or `/play-net` view is active the parent track automatically
+**ducks to about 22 %** of the slider level, so the race audio is not fighting the
+soundtrack. Leaving the play view restores the full level. The slider always sets
+the un-ducked level; the player API exposes `ducked` and `effectiveVolume` on
+`window.RR4Shell.getState()` for tests.
+
+## Playlists
+
+| Game | Source | Tracks |
+| --- | --- | --- |
+| Ridge Racer Type 4 | `R4.STR` intro/movie audio + 27 in-game XA cues | Intro ("You The One For Me"), 27 in-game cues, ending theme ("One More Win") |
+| Rage Racer | CD audio tracks 2–17 | 16 tracks |
+| Ridge Racer 1994 | CD audio tracks 2–13 | 12 tracks (the final CD track is silent) |
+
+Audio is extracted from the user's own discs into
+`_server/public/music/<game>/` as 192 kbps MP3, normalized to about −16 LUFS.
+The player reads the generated manifest at `/api/music` (fallback
+`/music/manifest.json`). If the manifest is missing, the player hides and shows
+`MUSIC OFFLINE` instead of breaking the game.
+
+## Rebuild the manifest
+
+Add or replace tracks, update `titles.json` if needed, then:
+
+```powershell
+cd _server
+node scripts/build-music-manifest.mjs
+```
+
+The builder validates that every `file` exists, sorts the R4 intro first, merges
+`titles.json`, and writes `public/music/manifest.json`. It is safe to run while
+the server is running; the next `/api/music` request reads the new file.
+
+## Files
+
+| Path | Purpose |
+| --- | --- |
+| `_server/public/music/<game>/*.mp3` | extracted audio |
+| `_server/public/music/r4-xa/*.mp3` | 27 R4 in-game XA cues, merged into the R4 playlist |
+| `_server/public/music/<game>/tracks.json` | per-game extraction output |
+| `_server/public/music/titles.json` | official/neutral title mapping |
+| `_server/public/music/manifest.json` | merged player manifest |
+| `_server/public/js/music-player.js` | gate, audio element, playlist, game switch |
+| `_server/public/css/music-player.css` | gate/player chrome |
+| `_server/public/css/game-themes.css` | per-game page theme tokens |
+| `_server/scripts/build-music-manifest.mjs` | manifest builder |
+| `_server/src/server.js` | `/music` static route + `/api/music` |
+
+## Per-game theme
+
+The active game is published as:
+
+```html
+<body data-game="r4">
+```
+
+`game-themes.css` maps that to three complete looks:
+
+- **r4** — navy/white, signal red, cyan timing lines, team-garage accents.
+- **rage** — gunmetal/charcoal, amber, hazard stripes, workshop LEDs.
+- **ridge** — sunset teal/blue, sun yellow, coral, chrome arcade marquee.
+
+The music player sets the attribute when the GAME selector changes; the page
+theme follows. The theme is CSS-only and does not require a reload.
+
+## Controls
+
+| Control | Action |
+| --- | --- |
+| ENTER | Unlock audio and start the intro |
+| SKIP AUDIO | Close the gate without starting |
+| Play / pause | Toggle the soundtrack |
+| Prev / next | Move through the current game playlist |
+| Volume / mute | Mix the soundtrack against the game audio |
+
+Keyboard users can reach every control; the gate is a real dialog with a
+focusable ENTER button. `prefers-reduced-motion` disables the theme transitions.
+
+## Troubleshooting
+
+- **No sound after ENTER:** check the browser tab is not muted, the volume is up,
+  and `/music/manifest.json` returns 200. Browsers only allow audio after the
+  click; a later programmatic `play()` may still be rejected until the user
+  clicks the compact player.
+- **Track skips immediately:** the MP3 is missing or the manifest path is wrong.
+  Run the builder and check `public/music/manifest.json` plus the Network tab for
+  404s.
+- **Wrong track order:** fix `tracks.json`/`titles.json`, then rebuild the
+  manifest. The R4 intro must be first.
+- **Theme does not change:** confirm `body[data-game]` changes in DevTools. If the
+  attribute changes but the look does not, the `game-themes.css` link is missing
+  or the build is stale.
+- **Music stops when the game starts:** the emulator may create its own audio
+  context; resume the player with the play button. The soundtrack and game audio
+  are independent.

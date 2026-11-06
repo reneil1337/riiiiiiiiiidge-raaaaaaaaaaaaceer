@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ridge Racer Type 4 // 2P Head-to-Head</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/multiplayer.css" />
+  <style>
+    /* Race Day footer strip (hub-links). Scoped to #mRaceDay so the shared
+       multiplayer.css and the lounge state machine stay untouched. */
+    #mRaceDay {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 14px;
+      margin-top: 18px;
+      padding: 12px 14px;
+      border: 1px solid var(--m-line);
+      border-left: 3px solid var(--m-yellow);
+      background: var(--m-panel);
+    }
+    #mRaceDay p {
+      flex: 1 1 260px;
+      min-width: 0;
+      margin: 0;
+      color: var(--m-muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    #mRaceDay a {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 12px;
+      border: 1px solid var(--m-yellow);
+      border-radius: 3px;
+      color: #ffe6a3;
+      font-family: var(--m-mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    #mRaceDay a:hover { background: rgba(255, 209, 102, .12); }
+    #mRaceDay a:focus-visible { outline: 2px solid var(--m-accent-2); outline-offset: 2px; }
+    @media (max-width: 640px) {
+      #mRaceDay { padding: 10px; }
+      #mRaceDay a { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="mwrap">
+    <header class="mhead">
+      <p class="mkicker">R4 TEAM GARAGE // 2P HEAD-TO-HEAD</p>
+      <h1>FIND YOUR RIVAL</h1>
+      <p class="msub">Create a room or join a code. Both drivers ready up, the grid rolls a random track and cars, then the cabinet hands you the race.</p>
+    </header>
+
+    <section class="mstart" id="mStart">
+      <label class="mfield">
+        <span>DRIVER NAME</span>
+        <input id="mName" maxlength="20" autocomplete="nickname" placeholder="PLAYER" />
+      </label>
+      <div class="mfield mfield--game">
+        <label>
+          <span>DISC</span>
+          <select id="mGame"></select>
+        </label>
+        <p class="mhint" id="mGameHint">VS BATTLE · Split screen - one car per driver</p>
+      </div>
+      <div class="mfield mfield--drive" id="mDriveField">
+        <span>DRIVE</span>
+        <div class="mseg" id="mDrive" role="group" aria-label="Drive mode">
+          <button class="mseg-btn" type="button" data-drive="live" aria-pressed="true">LIVE</button>
+          <button class="mseg-btn" type="button" data-drive="ghost" aria-pressed="false">GHOST</button>
+        </div>
+        <p class="mhint" id="mDriveHint">RAGE + RIDGE ONLY</p>
+      </div>
+      <button id="mCreate" class="mbtn mbtn--primary" type="button">CREATE ROOM</button>
+      <label class="mfield mfield--code">
+        <span>JOIN CODE</span>
+        <input id="mCode" maxlength="4" autocomplete="off" placeholder="R4XX" />
+      </label>
+      <button id="mJoin" class="mbtn" type="button">JOIN ROOM</button>
+    </section>
+
+    <section class="mlistwrap">
+      <div class="mlisthead">
+        <h2>OPEN ROOMS</h2>
+        <button id="mRefresh" class="mlinkbtn" type="button">REFRESH</button>
+      </div>
+      <div id="mRooms" class="mrooms"><p class="mempty">Scanning the LAN for open rooms…</p></div>
+    </section>
+
+    <section id="mRoom" class="mroom" hidden>
+      <div class="mroomhead">
+        <div>
+          <p class="mkicker">ROOM CODE</p>
+          <strong id="mRoomCode">----</strong>
+        </div>
+        <div class="minvite">
+          <span>INVITE</span>
+          <code id="mInvite">http://host:8080/multiplayer</code>
+          <button id="mCopy" class="mlinkbtn" type="button">COPY</button>
+        </div>
+        <button id="mLeave" class="mbtn" type="button">LEAVE</button>
+      </div>
+
+      <div class="mroomgame">
+        <div class="mroomgame-disc">
+          <p class="mkicker">DISC</p>
+          <p class="mroomgame-name" id="mRoomGame">R4 // VS BATTLE</p>
+        </div>
+        <label class="mfield mfield--game mfield--roomgame">
+          <span>HOST // CHANGE DISC</span>
+          <select id="mRoomGameSel" disabled></select>
+        </label>
+      </div>
+
+      <div class="mroomdrive" id="mRoomDriveRow">
+        <div class="mroomdrive-state">
+          <p class="mkicker">DRIVE</p>
+          <p class="mroomdrive-name" id="mRoomDrive">DRIVE LIVE // SHARED CAR</p>
+        </div>
+        <label class="mfield mfield--roomgame">
+          <span>HOST // CHANGE DRIVE</span>
+          <select id="mRoomDriveSel" disabled>
+            <option value="live">LIVE // SHARED CAR</option>
+            <option value="ghost">GHOST // TURN-BASED TIME TRIAL</option>
+          </select>
+        </label>
+        <div class="mroomturn" id="mRoomTurn" hidden>
+          <p class="mroomdrive-name" id="mTurnNow">TURN HOST</p>
+          <label class="mfield mfield--roomgame">
+            <span>HOST // THIS RUN'S DRIVER</span>
+            <select id="mTurnSel" disabled>
+              <option value="host">HOST</option>
+              <option value="guest">GUEST</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="mslots">
+        <article class="mslot" id="mP1">
+          <div class="mtag">P1 // HOST</div>
+          <h3 id="mP1Name">WAITING…</h3>
+          <label class="mfield">
+            <span>TEAM</span>
+            <select id="mP1Team" disabled></select>
+          </label>
+          <p class="mready" id="mP1Ready">NOT READY</p>
+        </article>
+        <article class="mslot" id="mP2">
+          <div class="mtag">P2 // GUEST</div>
+          <h3 id="mP2Name">WAITING…</h3>
+          <label class="mfield">
+            <span>TEAM</span>
+            <select id="mP2Team" disabled></select>
+          </label>
+          <p class="mready" id="mP2Ready">NOT READY</p>
+        </article>
+      </div>
+
+      <div class="mgrid">
+        <div class="mcard">
+          <span class="mtag">RANDOM GRID</span>
+          <strong id="mTrack">FIRST TRACK ROLLS ON READY</strong>
+          <p id="mCars">Both drivers ready → random cars, first track.</p>
+        </div>
+        <button id="mReady" class="mbtn mbtn--primary mbtn--ready" type="button" aria-pressed="false">READY</button>
+      </div>
+    </section>
+
+    <section class="mraceday" id="mRaceDay">
+      <p>This lounge is one-on-one: R4 rolls a real VS Battle with two cars; Rage Racer and Ridge Racer 1994 share one car between both pads. Race Day is a mass start with up to 50 drivers on one shared clock and one leaderboard.</p>
+      <a id="mRaceDayLink" href="/race-day">MORE THAN ONE RIVAL? → RACE DAY</a>
+    </section>
+
+    <footer class="mfoot">
+      <span>MUSIC KEEPS PLAYING WHILE YOU WAIT</span>
+      <span>2P // TCP 3010 RELAY</span>
+      <span>R4: TWO CARS // RAGE + RIDGE: SHARED CAR OR GHOST TIME TRIAL</span>
+    </footer>
+  </main>
+
+  <div id="mRace" class="mrace" hidden>
+    <div class="mrace-panel">
+      <p class="mkicker" id="mRaceKicker">GRID LOCKED // TEAMS READY</p>
+      <h2 id="mRaceTrack">RANDOM TRACK</h2>
+      <p id="mRaceCars"></p>
+      <p class="mcount" id="mCount">3</p>
+      <p class="mrace-note">HANDING OVER TO THE 2P CABINET…</p>
+    </div>
+  </div>
+
+  <script type="module" src="/js/multiplayer.js?v=20261106"></script>
+</body>
+</html>

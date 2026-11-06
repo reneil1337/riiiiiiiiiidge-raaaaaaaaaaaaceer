@@ -1,0 +1,60 @@
+# psxrecomp user settings for the LAN web build.
+# This copy is isolated from the desktop setup.
+
+[video]
+renderer          = "opengl"
+supersampling     = 1
+window_width      = 640
+antialiasing      = true
+texture_filtering = "nearest"
+fmv_filter        = "nearest"
+auto_skip_fmv     = true
+geometry_correction   = false
+perspective_texturing = false
+crt_filter        = "raw"
+scanlines         = false
+scanline_strength = 0.5
+fast_boot         = true
+bios_hle          = false
+fullscreen        = 0
+frame_interpolation = false
+frame_interpolation_fps = 0
+aspect_ratio      = "4:3"
+rewind            = false
+rewind_depth      = 50
+rewind_interval   = 15
+
+[audio]
+frequency = 44100
+spu_hq = false
+
+[hotkeys]
+rewind_pad = 1272
+save_state_menu_pad = 2040
+
+[launcher]
+skip_launcher = true
+
+[disc]
+path = "disc/R4 - Ridge Racer Type 4 (USA).bin"
+
+[memcard]
+dir     = "_runtime/web-memcards"
+card1   = "_runtime/web-memcards/card1.mcd"
+card2   = "_runtime/web-memcards/card2.mcd"
+enable1 = true
+enable2 = true
+
+[controller]
+p1_device = "keyboard"
+p1_mode   = "digital"
+p1_deadzone = 3276
+p2_device = "keyboard"
+p2_mode   = "digital"
+p2_deadzone = 3276
+multitap  = false
+multitap_analog = false
+deadzone  = 3276
+
+[localization]
+language = "en"

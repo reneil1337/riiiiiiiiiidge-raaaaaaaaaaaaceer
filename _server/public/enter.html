@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ridge Racer Type 4 // Enter the Cabinet</title>
+  <meta name="description" content="Team entry, soundtrack and LAN cabinet for Ridge Racer Type 4." />
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/enter.css" />
+  <style>
+    /* Seven nav labels must stay on one line at 390px without widening the bar.
+       Scoped to the shell nav so the rest of enter.css is untouched. */
+    @media (max-width: 720px) {
+      .rr4s-nav button { font-size: 8px; letter-spacing: .06em; }
+    }
+  </style>
+</head>
+<body data-game="r4">
+  <div id="rr4-enter" class="rr4e-gate">
+    <div class="rr4e-panel">
+      <div class="rr4e-brand"><span class="rr4e-mark">R</span> RIDGE RACER <em>TYPE 4</em></div>
+      <p class="rr4e-kicker">REAL RACING ROOTS '99 // CABINET LINK</p>
+      <h1 class="rr4e-title"><span>RIDGE</span><span>RACER</span><em>Type 4</em></h1>
+      <p class="rr4e-lead">ENTER THE CABINET</p>
+      <p class="rr4e-copy">The soundtrack starts with <b>You The One For Me</b> (the R4 intro), then follows the active game. The same audio keeps playing while you browse the field manual.</p>
+      <div class="rr4e-allow">AUDIO ALLOWANCE</div>
+      <button id="rr4eEnter" class="rr4e-enter" type="button">
+        <span>ENTER</span><span class="rr4e-enter-ico" aria-hidden="true">&#9656;</span>
+      </button>
+      <button id="rr4eSkip" class="rr4e-skip" type="button">SKIP AUDIO</button>
+      <p id="rr4eMsg" class="rr4e-msg" role="status" aria-live="polite"></p>
+      <p class="rr4e-hint">Click to unlock browser audio &middot; no autoplay before ENTER</p>
+      <div class="rr4e-teams" aria-hidden="true">
+        <i class="rr4e-team rr4e-team--sol"></i><i class="rr4e-team rr4e-team--pac"></i><i class="rr4e-team rr4e-team--map"></i><i class="rr4e-team rr4e-team--dig"></i>
+      </div>
+    </div>
+  </div>
+
+  <div id="rr4-shell" class="rr4s" hidden>
+    <header class="rr4s-bar">
+      <button class="rr4s-brand" type="button" data-view="welcome">
+        <span class="rr4s-mark">R</span>
+        <span class="rr4s-brand-text">RIDGE RACER <em>TYPE 4</em></span>
+      </button>
+      <nav class="rr4s-nav" aria-label="Cabinet views">
+        <button type="button" data-view="welcome" class="is-active">WELCOME</button>
+        <button type="button" data-view="games">GAMES</button>
+        <button type="button" data-view="play">PLAY</button>
+        <button type="button" data-view="race-day" aria-label="Race Day — 50 drivers, one race">RACE DAY</button>
+        <button type="button" data-view="multiplayer">2P</button>
+        <button type="button" data-view="docs">DOCS</button>
+        <button type="button" data-view="lobby">LOBBY</button>
+      </nav>
+      <label class="rr4s-game">
+        <span>GAME</span>
+        <select id="rr4sGame" aria-label="Active game">
+          <option value="r4">Ridge Racer Type 4</option>
+          <option value="rage">Rage Racer</option>
+          <option value="ridge">Ridge Racer (1994)</option>
+        </select>
+      </label>
+      <div class="rr4s-now" aria-live="polite">
+        <span class="rr4s-now-label">NOW PLAYING</span>
+        <span id="rr4sTrack" class="rr4s-track">AUDIO LINK...</span>
+      </div>
+      <div class="rr4s-controls">
+        <button id="rr4sPrev" type="button" aria-label="Previous track">&#9664;&#9664;</button>
+        <button id="rr4sPlay" type="button" aria-label="Play music" aria-pressed="false">&#9654;</button>
+        <button id="rr4sNext" type="button" aria-label="Next track">&#9654;&#9654;</button>
+        <input id="rr4sVol" type="range" min="0" max="100" step="1" value="42" aria-label="Music volume" />
+        <button id="rr4sFs" type="button" aria-label="Fullscreen cabinet" title="Fullscreen">&#9974;</button>
+      </div>
+    </header>
+    <button id="rr4sFsExit" class="rr4s-fs-exit" type="button" aria-label="Exit fullscreen">&#10005; EXIT FULLSCREEN</button>
+    <div id="rr4sLoad" class="rr4s-load" aria-hidden="true"><span>LINKING CABINET</span><i></i></div>
+    <iframe id="rr4sFrame" title="Ridge Racer cabinet" src="about:blank"
+      allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
+      allowfullscreen></iframe>
+    <p id="rr4sToast" class="rr4s-toast" role="status" aria-live="polite"></p>
+  </div>
+
+  <script type="module" src="/js/enter.js?v=20261106"></script>
+</body>
+</html>

@@ -1,0 +1,861 @@
+/* ============================================================================
+   Ridge Racer per-game visual themes
+   Active game is exposed as: <body data-game="r4|rage|ridge">
+   R4 is also the fallback when the attribute is absent (current /play look).
+   Loaded from play.css via @import, so play.css's own base rules stay last.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. Shared tokens + R4 fallback (identical to the pre-theme /play palette)
+   ------------------------------------------------------------------------ */
+:root,
+body[data-game="r4"] {
+  /* surfaces */
+  --ink: #07080c;
+  --ink-2: #0d0f16;
+  --panel: rgba(10, 12, 19, .82);
+  --panel-2: #14161f;
+  --card: #0c0e15;
+  --text: #f2f3f7;
+  --muted: #9aa0ae;
+
+  /* accents */
+  --accent: #e10600;
+  --accent-text: #ff4a43;      /* readable red on dark panels (5.6:1) */
+  --accent-2: #29d3ff;
+  --accent-2-text: #7fe9ff;
+  --on-accent: #ffffff;
+  --warn: #ffd166;
+  --warn-text: #ffd166;
+  --ok: #6ef2a2;
+  --danger: #ff8b86;
+  --ok-bg: rgba(110, 242, 162, .10);
+  --ok-line: rgba(110, 242, 162, .35);
+  --warn-bg: rgba(255, 209, 102, .10);
+  --warn-line: rgba(255, 209, 102, .35);
+  --danger-bg: rgba(255, 139, 134, .10);
+  --danger-line: rgba(255, 139, 134, .40);
+
+  /* lines / shadows / focus */
+  --border: rgba(255, 255, 255, .12);
+  --border-strong: rgba(255, 255, 255, .20);
+  --line: var(--border);
+  --shadow: 0 18px 50px rgba(0, 0, 0, .55);
+  --focus: #29d3ff;
+  --focus-halo: rgba(41, 211, 255, .45);
+
+  /* chrome */
+  --header-bg: linear-gradient(180deg, #12141c, #0a0b11);
+  --header-border: rgba(255, 255, 255, .12);
+  --header-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  --header-line: linear-gradient(90deg, var(--accent) 0 76px, var(--accent-2) 76px 108px, rgba(255, 255, 255, .09) 108px 100%);
+  --footer-bg: #080910;
+  --footer-text: #9aa0ae;
+  --footer-strong: #cfd3dd;
+  --fs-bg: rgba(10, 11, 16, .78);
+
+  /* controls */
+  --btn-bg: linear-gradient(180deg, #1a1c26, #101219);
+  --btn-bg-hover: linear-gradient(180deg, #241016, #150a0d);
+  --btn-border: rgba(255, 255, 255, .18);
+  --btn-text: #f2f3f7;
+  --btn-text-hover: #ffffff;
+  --btn-primary-bg: linear-gradient(180deg, #e10600, #a50400);
+  --btn-primary-border: #ff4a43;
+  --btn-primary-text: #ffffff;
+  --pill-bg: transparent;
+  --pill-text: #9aa0ae;
+  --select-bg: #14161f;
+  --select-text: #f2f3f7;
+
+  /* stage / bezel / setup */
+  --stage-bg: radial-gradient(120% 80% at 50% 0%, #1a1020 0%, #07080c 62%);
+  --stage-texture: repeating-linear-gradient(90deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 64px);
+  --stage-texture-opacity: 1;
+  --bezel-bg: #000000;
+  --bezel-ring: rgba(255, 255, 255, .07);
+  --bezel-shadow: 0 24px 70px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .07);
+  --bezel-radius: 8px;
+  --overlay-bg: radial-gradient(60% 60% at 50% 45%, rgba(8, 9, 14, .82), rgba(8, 9, 14, .94));
+  --setup-bg:
+    radial-gradient(ellipse at 18% 0%, rgba(225, 6, 0, .16), transparent 45%),
+    linear-gradient(160deg, #090a10 0%, #0d0f17 60%, #08090e 100%);
+  --plate-texture: none;
+  --disc-art: radial-gradient(circle at 35% 30%, #3b3f4e, #12141c 55%, #05060a 70%);
+  --disc-art-loaded: radial-gradient(circle at 35% 30%, #ff6a62, #a40500 45%, #2a0608 70%);
+  --disc-loaded-text: #ffffff;
+
+  /* ghost / record */
+  --ghost: #6ef2a2;
+  --ghost-bg: rgba(110, 242, 162, .10);
+
+  /* type + geometry */
+  --font-ui: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  /* brand / badge */
+  --brand-mark-bg: #e10600;
+  --brand-mark-shadow: none;
+  --badge-bg: #0f1118;
+  --badge-text: #f2f3f7;
+  --badge-border: rgba(255, 255, 255, .20);
+  --badge-dot: #e10600;
+
+  /* R4 team accents (Solvalou / Pac / Mappy / Dig) */
+  --team-solvalou: #2d7dff;
+  --team-pac: #e10600;
+  --team-mappy: #ff5fa2;
+  --team-dig: #00c9a7;
+
+  --rr-red: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+   2. Rage Racer — gunmetal workshop, amber hazard, dirty cream
+   ------------------------------------------------------------------------ */
+body[data-game="rage"] {
+  --ink: #141517;
+  --ink-2: #1b1d20;
+  --panel: #23262a;
+  --panel-2: #2b2f34;
+  --card: #1e2124;
+  --text: #f2ebdc;
+  --muted: #b7ae99;
+
+  --accent: #ff9a2e;
+  --accent-text: #ffb45e;
+  --accent-2: #f5c542;
+  --accent-2-text: #ffd97a;
+  --on-accent: #181006;
+  --warn: #ff5a3c;
+  --warn-text: #ffa08f;
+  --ok: #9fe870;
+  --danger: #ff6f63;
+  --ok-bg: rgba(159, 232, 112, .10);
+  --ok-line: rgba(159, 232, 112, .40);
+  --warn-bg: rgba(255, 90, 60, .12);
+  --warn-line: rgba(255, 90, 60, .45);
+  --danger-bg: rgba(255, 111, 99, .12);
+  --danger-line: rgba(255, 111, 99, .45);
+
+  --border: rgba(242, 235, 220, .16);
+  --border-strong: rgba(242, 235, 220, .30);
+  --line: var(--border);
+  --shadow: 0 20px 60px rgba(0, 0, 0, .65);
+  --focus: #ffb020;
+  --focus-halo: rgba(255, 176, 32, .50);
+
+  --header-bg: linear-gradient(180deg, #2c3035, #181a1d);
+  --header-border: rgba(255, 154, 46, .28);
+  --header-shadow: inset 0 1px 0 rgba(242, 235, 220, .07), 0 2px 12px rgba(0, 0, 0, .35);
+  --header-line: repeating-linear-gradient(135deg, #ff9a2e 0 10px, #1b1d20 10px 20px);
+  --footer-bg: #181a1d;
+  --footer-text: #b7ae99;
+  --footer-strong: #e8dcc0;
+  --fs-bg: rgba(20, 21, 23, .82);
+
+  --btn-bg: linear-gradient(180deg, #33373c, #232629);
+  --btn-bg-hover: linear-gradient(180deg, #4a3418, #2a1e0f);
+  --btn-border: rgba(242, 235, 220, .22);
+  --btn-text: #f2ebdc;
+  --btn-text-hover: #fff4e2;
+  --btn-primary-bg: linear-gradient(180deg, #ffb04a, #e07a12);
+  --btn-primary-border: #ffc266;
+  --btn-primary-text: #1a1105;
+  --pill-bg: rgba(20, 21, 23, .80);
+  --pill-text: #b7ae99;
+  --select-bg: #2b2f34;
+  --select-text: #f2ebdc;
+
+  --stage-bg: radial-gradient(100% 70% at 50% 0%, #2a2d30 0%, #17181a 58%, #101112 100%);
+  --stage-texture:
+    repeating-linear-gradient(135deg, rgba(255, 154, 46, .05) 0 2px, transparent 2px 20px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 96px);
+  --stage-texture-opacity: .9;
+  --bezel-bg: #0b0c0d;
+  --bezel-ring: rgba(255, 154, 46, .28);
+  --bezel-shadow: 0 24px 70px rgba(0, 0, 0, .80), 0 0 0 1px rgba(255, 154, 46, .28), 0 0 0 6px rgba(0, 0, 0, .35);
+  --bezel-radius: 4px;
+  --overlay-bg: radial-gradient(60% 60% at 50% 45%, rgba(20, 21, 23, .86), rgba(12, 13, 14, .96));
+  --setup-bg:
+    radial-gradient(ellipse at 80% 0%, rgba(255, 154, 46, .14), transparent 50%),
+    linear-gradient(160deg, #191b1e 0%, #212428 55%, #141517 100%);
+  --plate-texture:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .18) 0 1px, transparent 1px 58px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 44px);
+  --disc-art: radial-gradient(circle at 35% 30%, #5a6068, #26292d 55%, #0a0b0c 72%);
+  --disc-art-loaded: radial-gradient(circle at 35% 30%, #ffc06a, #c2600a 45%, #2a1503 72%);
+  --disc-loaded-text: #1a1105;
+
+  --ghost: #9fe870;
+  --ghost-bg: rgba(159, 232, 112, .10);
+
+  --font-ui: "Bahnschrift SemiCondensed", "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
+  --font-display: "Bahnschrift Condensed", "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
+  --radius: 6px;
+  --radius-sm: 3px;
+
+  --brand-mark-bg: linear-gradient(180deg, #ffb04a, #d97706);
+  --brand-mark-shadow: 0 0 12px rgba(255, 154, 46, .25);
+  --badge-bg: #2b2419;
+  --badge-text: #ffcf8a;
+  --badge-border: rgba(255, 154, 46, .50);
+  --badge-dot: #ff9a2e;
+
+  --rr-red: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+   3. Ridge Racer 1994 — arcade sunset, teal / sun yellow / coral / chrome
+   ------------------------------------------------------------------------ */
+body[data-game="ridge"] {
+  --ink: #072836;
+  --ink-2: #0a3345;
+  --panel: rgba(8, 45, 60, .86);
+  --panel-2: #10465c;
+  --card: #0b3446;
+  --text: #eaf7ff;
+  --muted: #a9d6e6;
+
+  --accent: #ff6f61;
+  --accent-text: #ff9a8f;
+  --accent-2: #ffc93c;
+  --accent-2-text: #ffe08a;
+  --on-accent: #06202b;
+  --warn: #ffe066;
+  --warn-text: #ffe680;
+  --ok: #7dffc4;
+  --danger: #ff9b8f;
+  --ok-bg: rgba(125, 255, 196, .12);
+  --ok-line: rgba(125, 255, 196, .45);
+  --warn-bg: rgba(255, 224, 102, .12);
+  --warn-line: rgba(255, 224, 102, .45);
+  --danger-bg: rgba(255, 155, 143, .12);
+  --danger-line: rgba(255, 155, 143, .45);
+
+  --border: rgba(216, 230, 239, .22);
+  --border-strong: rgba(216, 230, 239, .38);
+  --line: var(--border);
+  --shadow: 0 22px 60px rgba(0, 15, 25, .60);
+  --focus: #ffe066;
+  --focus-halo: rgba(255, 224, 102, .50);
+
+  --header-bg: linear-gradient(100deg, #085d78 0%, #0a5470 55%, #0a3d51 100%);
+  --header-border: rgba(255, 201, 60, .45);
+  --header-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 2px 14px rgba(0, 15, 25, .35);
+  --header-line: linear-gradient(90deg, #ffc93c 0 34%, #ff6f61 34% 67%, #29a8cf 67% 100%);
+  --footer-bg: #072836;
+  --footer-text: #a9d6e6;
+  --footer-strong: #eaf7ff;
+  --fs-bg: rgba(7, 40, 54, .80);
+
+  --btn-bg: linear-gradient(180deg, #12556d, #0c3e51);
+  --btn-bg-hover: linear-gradient(180deg, #1a6e8a, #0f4b61);
+  --btn-border: rgba(216, 230, 239, .30);
+  --btn-text: #eaf7ff;
+  --btn-text-hover: #ffffff;
+  --btn-primary-bg: linear-gradient(180deg, #ffd75e, #ff8a4c);
+  --btn-primary-border: #ffe08a;
+  --btn-primary-text: #06202b;
+  --pill-bg: rgba(7, 40, 54, .75);
+  --pill-text: #a9d6e6;
+  --select-bg: #10465c;
+  --select-text: #eaf7ff;
+
+  --stage-bg:
+    radial-gradient(70% 45% at 50% 8%, rgba(255, 201, 60, .25), transparent 72%),
+    linear-gradient(180deg, #0a4f6d 0%, #0c6a83 26%, #0a3d52 58%, #072a39 100%);
+  --stage-texture:
+    repeating-linear-gradient(180deg,
+      rgba(255, 201, 60, .06) 0 26px,
+      rgba(255, 111, 97, .06) 26px 52px,
+      rgba(41, 159, 216, .05) 52px 78px,
+      transparent 78px 130px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 72px);
+  --stage-texture-opacity: 1;
+  --bezel-bg: #04141c;
+  --bezel-ring: rgba(255, 201, 60, .45);
+  --bezel-shadow:
+    0 0 0 2px rgba(255, 201, 60, .55),
+    0 0 0 7px rgba(216, 230, 239, .16),
+    0 26px 80px rgba(0, 15, 25, .65),
+    0 0 48px rgba(255, 201, 60, .14);
+  --bezel-radius: 14px;
+  --overlay-bg: radial-gradient(60% 60% at 50% 45%, rgba(6, 32, 43, .82), rgba(4, 20, 28, .94));
+  --setup-bg:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 201, 60, .20), transparent 55%),
+    linear-gradient(165deg, #0b5570 0%, #0a3d52 55%, #072836 100%);
+  --plate-texture: linear-gradient(180deg, rgba(255, 255, 255, .05), transparent 42%);
+  --disc-art: radial-gradient(circle at 35% 30%, #d8e6ef, #6d8c9c 45%, #123748 72%);
+  --disc-art-loaded: radial-gradient(circle at 35% 30%, #ffe08a, #ff8a4c 40%, #ff6f61 60%, #7a1f1a 85%);
+  --disc-loaded-text: #06202b;
+
+  --ghost: #7dffc4;
+  --ghost-bg: rgba(125, 255, 196, .12);
+
+  --font-ui: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+  --font-display: "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif;
+  --radius: 14px;
+  --radius-sm: 8px;
+
+  --brand-mark-bg: linear-gradient(135deg, #ffc93c, #ff6f61);
+  --brand-mark-shadow: 0 0 14px rgba(255, 201, 60, .35);
+  --badge-bg: #0d3d50;
+  --badge-text: #ffe08a;
+  --badge-border: rgba(255, 201, 60, .55);
+  --badge-dot: #ffc93c;
+
+  --rr-red: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+   4. Themed chrome — all selectors are gated on body[data-game]
+   ------------------------------------------------------------------------ */
+body[data-game] {
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+/* Paint the root too, so the viewport never flashes the R4 navy. */
+html:has(body[data-game="rage"]) { background: #141517; }
+html:has(body[data-game="ridge"]) { background: #072836; }
+
+/* ---- top bar ---- */
+body[data-game] #play-bar {
+  position: relative;
+  background: var(--header-bg);
+  border-bottom-color: var(--header-border);
+  box-shadow: var(--header-shadow);
+}
+
+/* thin per-game identity line under the header (red/cyan, hazard, sunset) */
+body[data-game] #play-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--header-line);
+  opacity: .9;
+  pointer-events: none;
+}
+body[data-game="rage"] #play-bar::after,
+body[data-game="ridge"] #play-bar::after { height: 3px; }
+
+body[data-game] .brand { color: var(--text); }
+body[data-game] .brand em { color: var(--accent-text); }
+body[data-game] .brand-mark {
+  background: var(--brand-mark-bg);
+  color: var(--on-accent);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--brand-mark-shadow);
+}
+
+/* ---- pickers / selects ---- */
+body[data-game] .picker,
+body[data-game] .filter-picker { color: var(--muted); }
+
+body[data-game] .picker select,
+body[data-game] .filter-picker select,
+body[data-game] .setup-field select {
+  background-color: var(--select-bg);
+  color: var(--select-text);
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- focus: one visible ring for every theme ---- */
+body[data-game] :is(.btn, .picker select, .filter-picker select,
+  .setup-field select, .fs-exit, .disc-card, .mini-btn, .ghost-row button,
+  .sound-gate, #play-foot a, .setup-links a):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--focus-halo);
+}
+
+/* ---- status / boot pill ---- */
+body[data-game] .status {
+  background: var(--pill-bg);
+  color: var(--pill-text);
+  border-color: var(--border);
+}
+body[data-game] .status[data-state="running"] {
+  color: var(--ok);
+  border-color: var(--ok-line);
+  background: var(--ok-bg);
+}
+body[data-game] .status[data-state="loading"] {
+  color: var(--warn-text);
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
+}
+body[data-game] .status[data-state="error"] {
+  color: var(--danger);
+  border-color: var(--danger-line);
+  background: var(--danger-bg);
+}
+
+/* ---- buttons ---- */
+body[data-game] .btn {
+  background: var(--btn-bg);
+  border-color: var(--btn-border);
+  border-radius: var(--radius-sm);
+  color: var(--btn-text);
+}
+body[data-game] .btn:hover {
+  background: var(--btn-bg-hover);
+  border-color: var(--accent);
+  color: var(--btn-text-hover);
+}
+body[data-game] .btn .btn-ico { color: var(--accent-text); }
+
+body[data-game] .btn-primary {
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+  color: var(--btn-primary-text);
+}
+body[data-game] .btn-primary:hover {
+  background: var(--btn-primary-bg);
+  border-color: var(--accent-2);
+  color: var(--btn-primary-text);
+  filter: brightness(1.06);
+}
+
+body[data-game] .btn-netplay {
+  background: var(--btn-bg);
+  border-color: var(--accent);
+  color: var(--btn-text);
+}
+body[data-game] .btn-netplay:hover {
+  background: var(--btn-bg-hover);
+  border-color: var(--accent-2);
+  color: var(--btn-text-hover);
+}
+
+body[data-game] .btn-docs {
+  background: var(--btn-bg);
+  border-color: var(--accent-2);
+  color: var(--accent-2-text);
+}
+body[data-game] .btn-docs:hover {
+  background: var(--btn-bg-hover);
+  border-color: var(--accent-2);
+  color: var(--accent-2-text);
+}
+body[data-game] .btn-ghost { color: var(--muted); }
+body[data-game] .btn-ghost:hover { color: var(--accent-text); }
+
+body[data-game] .btn-eject,
+body[data-game] .btn-ghost-rec {
+  border-color: var(--warn);
+  color: var(--warn-text);
+}
+body[data-game] .btn-ghost-rec.recording {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---- fullscreen exit ---- */
+body[data-game] .fs-exit {
+  background: var(--fs-bg);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+body[data-game] .fs-exit:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  outline: none;
+}
+
+/* ---- sound gate ---- */
+body[data-game] .sound-gate-sub { color: var(--warn-text); }
+body[data-game] .sound-gate::after {
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--focus-halo);
+}
+
+/* ---- stage texture (behind the canvas) ---- */
+body[data-game] #play-stage {
+  background: var(--stage-bg);
+}
+body[data-game] #play-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--stage-texture);
+  opacity: var(--stage-texture-opacity);
+}
+/* R4 start-line chequer, very subtle, top edge of the stage */
+body[data-game="r4"] #play-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .07;
+  background: repeating-conic-gradient(#ffffff 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+}
+
+/* ---- canvas frame / bezel ---- */
+body[data-game] #game {
+  z-index: 1;
+  background: var(--bezel-bg);
+  border-radius: var(--bezel-radius);
+  box-shadow: var(--bezel-shadow);
+}
+
+/* ---- boot overlay ---- */
+body[data-game] .overlay { background: var(--overlay-bg); }
+body[data-game] .overlay-kicker { color: var(--accent-text); }
+body[data-game] .bar { background: var(--panel-2); }
+body[data-game] .bar i {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+/* ---- pre-boot setup / disc deck ---- */
+body[data-game] #setup { background: var(--setup-bg); }
+body[data-game] .setup-kicker { color: var(--accent-text); }
+
+body[data-game] .disc-deck,
+body[data-game] .disc-library,
+body[data-game] .setup-options {
+  background-color: var(--panel);
+  background-image: var(--plate-texture);
+  border-color: var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+body[data-game] .disc-slot {
+  background: repeating-linear-gradient(180deg, var(--panel-2) 0 5px, var(--ink-2) 5px 10px);
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, .8);
+}
+
+body[data-game] .disc-art {
+  background: var(--disc-art);
+  border-color: var(--border-strong);
+  color: var(--muted);
+}
+body[data-game] .disc-art.loaded {
+  background: var(--disc-art-loaded);
+  color: var(--disc-loaded-text);
+}
+
+body[data-game] .disc-card {
+  background: var(--card);
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+}
+body[data-game] .disc-card:hover,
+body[data-game] .disc-card.selected {
+  background: var(--panel-2);
+  border-color: var(--accent);
+}
+body[data-game] .disc-card .mini-disc {
+  background: var(--disc-art);
+  border-color: var(--border-strong);
+}
+body[data-game] .disc-card .badge { color: var(--ok); }
+body[data-game] .setup-links a { color: var(--accent-text); }
+body[data-game] .setup-pads { border-color: var(--border); }
+body[data-game] .local-disc input { color: var(--select-text); }
+
+/* ---- footer ---- */
+body[data-game] #play-foot {
+  background: var(--footer-bg);
+  border-top-color: var(--border);
+  color: var(--footer-text);
+}
+body[data-game] #play-foot #footTiming { color: var(--footer-strong); }
+body[data-game] #play-foot a { color: var(--footer-text); }
+body[data-game] #play-foot a:hover { color: var(--accent-text); }
+
+/* ---- LAN ghost clips ---- */
+body[data-game] .mini-btn {
+  background: var(--panel-2);
+  color: var(--muted);
+  border-color: var(--border);
+}
+body[data-game] .ghost-row {
+  background: var(--card);
+  border-color: var(--border);
+}
+body[data-game] .ghost-row.active {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 1px var(--ok-line);
+}
+body[data-game] .ghost-row button {
+  background: var(--panel-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+body[data-game] .ghost-selected { color: var(--ok); }
+body[data-game] .ghost-video {
+  background: var(--bezel-bg);
+  border-color: var(--ghost);
+}
+body[data-game] .ghost-badge {
+  color: var(--ghost);
+  background: var(--pill-bg);
+  border-color: var(--ghost);
+}
+body[data-game] .ghost-badge button { color: var(--text); }
+
+/* ---------------------------------------------------------------------------
+   5. Per-game typography / structural flavour
+   ------------------------------------------------------------------------ */
+body[data-game] .brand,
+body[data-game] .setup-head h1,
+body[data-game] .overlay h1 { font-family: var(--font-display); }
+
+/* R4: late-90s team-garage — italic display, clean, hard */
+body[data-game="r4"] .setup-head h1,
+body[data-game="r4"] .overlay h1 { font-style: italic; }
+
+/* Rage: condensed workshop signage, uppercase, riveted plates */
+body[data-game="rage"] .brand {
+  letter-spacing: .20em;
+  text-transform: uppercase;
+}
+body[data-game="rage"] .setup-head h1,
+body[data-game="rage"] .overlay h1 {
+  text-transform: uppercase;
+  letter-spacing: .01em;
+  font-weight: 900;
+}
+body[data-game="rage"] .btn { text-transform: uppercase; }
+body[data-game="rage"] .disc-deck,
+body[data-game="rage"] .disc-library,
+body[data-game="rage"] .setup-options {
+  box-shadow:
+    inset 0 1px 0 rgba(242, 235, 220, .07),
+    inset 0 0 0 1px rgba(0, 0, 0, .28),
+    var(--shadow);
+}
+
+/* Ridge: playful arcade marquee, rounded display, checkered flag accent */
+body[data-game="ridge"] .brand {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+body[data-game="ridge"] .setup-head h1,
+body[data-game="ridge"] .overlay h1 {
+  letter-spacing: .02em;
+  font-weight: 900;
+}
+body[data-game="ridge"] #play-foot { position: relative; }
+body[data-game="ridge"] #play-foot::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -5px;
+  height: 4px;
+  pointer-events: none;
+  opacity: .18;
+  background: repeating-conic-gradient(#eaf7ff 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   6. Reusable mode badge
+   Usage: <span class="rr4-mode-badge" data-game="r4|rage|ridge"></span>
+   The label is generated by CSS, so no extra text node is required.
+   ------------------------------------------------------------------------ */
+.rr4-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid var(--badge-border);
+  border-radius: 999px;
+  background: var(--badge-bg);
+  color: var(--badge-text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0;                 /* any text node supplied by the player is hidden */
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.rr4-mode-badge::after {
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+.rr4-mode-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--badge-dot);
+  box-shadow: 0 0 8px var(--badge-dot);
+}
+
+.rr4-mode-badge[data-game="r4"] {
+  --badge-bg: #0f1118;
+  --badge-text: #f2f3f7;
+  --badge-border: rgba(255, 255, 255, .20);
+  --badge-dot: #e10600;
+}
+.rr4-mode-badge[data-game="r4"]::after {
+  content: "R4 · REAL RACING ROOTS ’99";
+}
+
+.rr4-mode-badge[data-game="rage"] {
+  --badge-bg: #2b2419;
+  --badge-text: #ffcf8a;
+  --badge-border: rgba(255, 154, 46, .50);
+  --badge-dot: #ff9a2e;
+  font-family: "Bahnschrift SemiCondensed", "Arial Narrow", "Segoe UI", sans-serif;
+  border-radius: 3px;
+}
+.rr4-mode-badge[data-game="rage"]::after {
+  content: "RAGE RACER";
+}
+
+.rr4-mode-badge[data-game="ridge"] {
+  --badge-bg: #0d3d50;
+  --badge-text: #ffe08a;
+  --badge-border: rgba(255, 201, 60, .55);
+  --badge-dot: #ffc93c;
+  font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+}
+.rr4-mode-badge[data-game="ridge"]::after {
+  content: "RIDGE RACER · 1994";
+}
+
+/* If the player omits data-game on the badge, follow the page theme instead. */
+body[data-game="r4"] .rr4-mode-badge:not([data-game])::after {
+  content: "R4 · REAL RACING ROOTS ’99";
+}
+body[data-game="rage"] .rr4-mode-badge:not([data-game])::after {
+  content: "RAGE RACER";
+}
+body[data-game="ridge"] .rr4-mode-badge:not([data-game])::after {
+  content: "RIDGE RACER · 1994";
+}
+
+/* Optional four-team accent strip for R4 garage/team screens. */
+.rr4-team-stripe {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    var(--team-solvalou) 0 25%,
+    var(--team-pac) 25% 50%,
+    var(--team-mappy) 50% 75%,
+    var(--team-dig) 75% 100%);
+}
+
+/* ---------------------------------------------------------------------------
+   7. Theme transition (150–250ms), reduced-motion aware
+   ------------------------------------------------------------------------ */
+body[data-game],
+body[data-game] #play-bar,
+body[data-game] #play-stage,
+body[data-game] #play-foot,
+body[data-game] #game,
+body[data-game] .btn,
+body[data-game] .picker select,
+body[data-game] .filter-picker select,
+body[data-game] .setup-field select,
+body[data-game] .status,
+body[data-game] .disc-deck,
+body[data-game] .disc-library,
+body[data-game] .setup-options,
+body[data-game] .disc-card,
+body[data-game] .fs-exit,
+body[data-game] .overlay,
+body[data-game] .brand-mark {
+  transition:
+    background-color .2s ease,
+    color .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+/* subtle live LED on the badge */
+@media (prefers-reduced-motion: no-preference) {
+  .rr4-mode-badge::before { animation: rr4-badge-led 2.6s ease-in-out infinite; }
+  @keyframes rr4-badge-led {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .55; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-game],
+  body[data-game] #play-bar,
+  body[data-game] #play-stage,
+  body[data-game] #play-foot,
+  body[data-game] #game,
+  body[data-game] .btn,
+  body[data-game] .picker select,
+  body[data-game] .filter-picker select,
+  body[data-game] .setup-field select,
+  body[data-game] .status,
+  body[data-game] .disc-deck,
+  body[data-game] .disc-library,
+  body[data-game] .setup-options,
+  body[data-game] .disc-card,
+  body[data-game] .fs-exit,
+  body[data-game] .overlay,
+  body[data-game] .brand-mark {
+    transition: none !important;
+  }
+  .rr4-mode-badge::before { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   8. Fullscreen guards
+   Keep the plain black emulator fullscreen even if game-themes.css is linked
+   after play.css instead of imported before it.
+   ------------------------------------------------------------------------ */
+body[data-game].fs #play-bar,
+body[data-game].fs #play-foot { display: none; }
+
+body[data-game].fs #play-stage {
+  padding: 0;
+  background: #000000;
+}
+
+body[data-game].fs #game {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body[data-game].fs #play-stage::before,
+body[data-game].fs #play-stage::after { display: none; }
+
+/* ---------------------------------------------------------------------------
+   9. Narrow screens — keep the optional badge compact
+   ------------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .rr4-mode-badge {
+    gap: 5px;
+    padding: 4px 8px 4px 6px;
+    letter-spacing: .10em;
+  }
+  .rr4-mode-badge::after { font-size: 8px; letter-spacing: .10em; }
+  .rr4-mode-badge[data-game="r4"]::after { content: "R4 ’99"; }
+}
+
+
+
+

@@ -1,0 +1,340 @@
+---
+title: Troubleshooting
+description: The failures you will actually hit — ports, black screens, 2P lounge handoff, netplay rooms, pads and the 1024×768 fullscreen trap.
+---
+
+## Nothing loads / other devices time out
+
+1. Confirm the host is listening:
+
+   ```powershell
+   Invoke-RestMethod http://127.0.0.1:8080/api/health
+   ```
+
+2. Open `http://localhost:8080/play` on the host. If that works, the page is fine
+   and the problem is the network/firewall.
+3. Run `_server\firewall.bat` once (UAC). It opens inbound **TCP 8080**.
+4. Use the LAN IP printed by the server, not `localhost`, on other devices.
+5. Disable Wi-Fi/client isolation and avoid VPN adapters.
+
+## `/play` canvas stays black
+
+- The first load is the CHD — 341 MB (R4), 495 MB (Rage), 296 MB (Ridge). A cold
+  cache can show black for several seconds, and a slow WLAN can take much longer.
+- Check the Network tab: `/rom/r4.chd` should return **200** with a length, then
+  later **206** range responses.
+- Click once (or the **CLICK TO RACE** gate) to unlock audio; the first
+  `keydown` and gamepad button also unlock it, and the volume defaults to 70 %
+  even on a fresh profile.
+- After dismissing **CLICK TO RACE**, click the game canvas before pressing Start
+  or using the keyboard; the gate does not focus EmulatorJS (`activeElement=BODY`).
+- A plain-HTTP LAN origin logs **no** COOP error (the server sends COOP/COEP on
+  loopback/HTTPS only). Do not expect 0 console errors either way.
+- Threads are already off on a plain-HTTP LAN, so `?threads=0` is a no-op there;
+  `?threads=1` is the flag that **fails** without `SharedArrayBuffer`.
+
+## Netplay: no room appears
+
+- Same numeric `EJS_gameID`: R4 = 4, Rage = 5, Ridge = 6. That is the rule the
+  relay enforces.
+- Same origin is simplest but not required: `/list` filters only by `game_id`
+  and free capacity, and `join-room` does not check the domain.
+- Check the relay:
+
+  ```powershell
+  Invoke-RestMethod http://127.0.0.1:3010/health
+  Invoke-RestMethod "http://127.0.0.1:3010/list?domain=<host-lan-ip>:8080&game_id=4"
+  ```
+
+- A full room (`2/2`) disappears from `/list`; leave it or ask the host to leave.
+- Run `_server\firewall-netplay.bat` (TCP 3010, all profiles).
+- If the port is in use, run `stop-netplay.bat` and start again.
+
+## 2P lounge: both READY but nothing starts
+
+The plan is server-side and the launch is gated on the lounge socket, so check
+the socket before the emulator:
+
+1. Both tabs must show the **same** room code and `READY` on both slots. A slot
+   that still reads `NOT READY` was toggled after a reconnect.
+2. The lounge socket is `ws://<host>:8080/mp` on the page port, not the 3010
+   relay. In DevTools → Network → WS, the `/mp` connection must be open. A
+   dropped socket disables READY and reconnects after 1.5 s.
+3. The server logs `mp room <code> dropped (stale)` for rooms whose sockets are
+   all dead and idle for five minutes. Recreate the room.
+4. If the countdown starts but the frame stays on the lounge, look at the shell
+   console for the `rr4-race` postMessage. The shell builds the handoff URL; an
+   iframe outside the shell falls back to its own (plan-less) navigation.
+5. If only one side counts down, the two tabs are in different rooms or one of
+   them started outside the shell. Compare the `mpRoom`/`mpRace` parameters in
+   each tab's frame URL.
+
+Probe the transport directly:
+
+```powershell
+cd _server
+node mp-ws-probe.mjs       # 22/22 checks against ws://127.0.0.1:8080/mp
+```
+
+## `/play-net` loads but the menus do not move
+
+The host macro only runs when the host has **2 players and an open data channel**.
+Read the stage log before touching the game:
+
+| Symptom | Meaning |
+| --- | --- |
+| `Auto race waiting: 1/2 players, data channel pending.` | the guest has not joined the relay room `R4-<code>` yet |
+| `AUTO RACE n: room:hosting` and nothing else | the host is in the relay room but sees only one player |
+| `AUTO RACE n: menu:boot` repeated | the RAM probe has not found `0x800AC801`; R4 is still on the boot sequence |
+| `menu:unverified` | the probe never answered; the macro falls back to fixed Down presses and keeps going |
+| `menu:ready` → `menu:vs` → `car:p1` | the macro is driving the menus correctly |
+| `macro:error` | the core was not ready; reload `/play-net` with the same `mp*` URL |
+
+Other checks:
+
+- The relay room name is `R4-<code>` with password `raceId`. A guest that joins
+  without the password sits in a different room and never opens the data channel.
+- The host tab must stay **foreground**; background tabs throttle the canvas and
+  the netplay data channel.
+- In the host console, `window.__R4NET.readMenuSel()` should return `0–6` on the
+  main menu and `window.__R4NET.planText()` should print
+  `<course> // <car> vs <car>`.
+- Do not press pad buttons on the host while the macro runs; both drive Player 1.
+
+## `REMATCH` does nothing, or the guest waits at `WAITING FOR HOST`
+
+- The chip only exists when the page was opened from the lounge handoff
+  (`mpRole` and `mpRoom` in the URL). A manual `/play-net` panel has no rematch.
+- Each player clicks **REMATCH on their own tab**: the host reloads to
+  `/multiplayer?room=<code>&host=1` and recreates that room; the guest reloads to
+  `?host=0` and retries `join` every 2 s until the room exists.
+- `WAITING FOR HOST // ROOM <code>` for more than a few seconds means the host
+  has not clicked yet or its create failed. The host should see the room card at
+  `1/2`; if not, press **CREATE ROOM** (the code is pre-filled) or **RETRY**.
+- A rematch keeps the **same** code. If the host ends up with a different code,
+  the old room was still live (usually a stale socket); the 20 s heartbeat clears
+  it, or press **LEAVE** and create again.
+- The new race gets a fresh server plan and `raceId`; the old course/cars are not
+  reused.
+
+## Netplay console: `No ICE servers configured` is expected
+
+```text
+[NETPLAY] No ICE servers configured. Connections will only work on LAN.
+```
+
+That is the intended one-subnet configuration (`EJS_netplayICEServers = []`).
+It means the peers use direct LAN host candidates. It is not an error and it does
+not prevent a same-subnet race. STUN **and** TURN are needed only across
+NAT/internet.
+
+The plain-HTTP COOP warning is gone: the server sends COOP/COEP only on a
+loopback host or HTTPS. On loopback/HTTPS the shell and its embedded `/play` are
+both `crossOriginIsolated=true`. Do not expect a clean console regardless
+(`No ICE servers configured`, React #418).
+
+## `/mp` heartbeat and stale rooms
+
+The lobby socket pings every **20 s** and terminates sockets that stop answering.
+Termination drops the player, promotes the remaining guest to host, resets READY
+and deletes the room if empty. Rooms idle for more than **5 minutes** with no live
+socket are removed from **OPEN ROOMS**.
+
+- A room listed with `1/2` and a host that never responds is usually a tab that
+  was closed without a close frame; it disappears after the heartbeat.
+- `join` on such a room returns `Room not found` once it is dropped.
+- The heartbeat runs on the server you are connected to. `:8080` was restarted
+  on 2026-11-06 and serves it; restart again after any future `/mp` edit. Then
+  `node mp-ws-probe.mjs` should see both the app-level `pong` and a server
+  heartbeat ping.
+- Probe it on a throwaway instance:
+
+  ```powershell
+  cd _server
+  $env:RR4_PORT='8095'; $env:RR4_NO_AUTOSTART='1'; $env:RR4_STREAM_SOURCE='test'
+  node src/server.js
+  # in a second shell:
+  node mp-heartbeat-probe.mjs 8095
+  ```
+
+## Netplay: guest joins but the stream never appears
+
+- Leave the room and rejoin; WebRTC setup is retryable.
+- Keep the host tab **foreground** (background tabs throttle canvas capture).
+- Use one subnet. `EJS_netplayICEServers = []` means direct LAN host candidates;
+  STUN/TURN are needed across NAT.
+- If the host leaves, 4.3-pre does not promote the guest. Rejoin or restart the
+  room.
+
+## Netplay: no audio (and there is none to get)
+
+- **Guest audio is absent today**, not just unverified. The 4.3 host tries to
+  capture `Module.AL.currentCtx`, which is `null` under RWebAudio, so
+  `localStream` is video-only (`No audio tracks captured - guests will have no
+  audio`; measured host tracks `["video:live"]`, guest `remoteEls: 0`, no inbound
+  audio RTP).
+- Clicking **CLICK TO RACE** on the host before creating the room does **not**
+  help: `No audio context found for capture` means there is no OpenAL context to
+  tap. The fix is an RWebAudio tap (`_runtime/analysis/05-audio.md`).
+- The guest core is frozen, so there is no double audio either — the race is
+  simply heard through the host's speakers.
+
+## Guest picture stutters or is not 60 fps
+
+- Keep the host tab **foreground**; background tabs throttle rAF and canvas
+  capture.
+- The host captures at 60 fps (`captureStream(0)` + `requestFrame()`), 0.9–2.5
+  Mbps measured. The guest **decodes** 57.4 fps but **presents** 42–55 fps in the
+  pinned bundle — the detached `<video>` is copied by a 140 Hz rAF loop. `decoded`
+  is the stable number; `presented` is not a transport failure.
+- Lower the pattern cost with the netplay panel's **QUALITY** selector (LOW =
+  1.5 Mbps/30, MED = 4/60, HIGH = 8/60, AUTO drops to LOW and stays there). The
+  2 s `getStats()` line in the stage log shows fps, encoded/decoded,
+  `qualityLimitationReason`, jitter, loss, RTT and bitrate.
+
+## Headers, compression, HTTPS
+
+| Symptom | Check |
+| --- | --- |
+| `If-Range` re-sends the whole 341 MB CHD | The server must answer with a **strong** ETag (`"sizehex-mtimehex"`, no `W/`). Rebuilt 2026-11-06: `Range` + `If-Range` → **206**, `If-None-Match` → **304**. Check `Invoke-WebRequest -Method Head http://127.0.0.1:8080/rom/r4.chd` |
+| Large JS transfers on a slow link | Text assets are brotli/gzip (`emulator.min.js` 426,343 → 106,924 B br). Look for `Content-Encoding: br` and `Vary: Accept-Encoding`; `/rom`, `/bios`, `/music`, `/ghosts` and `Range` requests are deliberately uncompressed |
+| Connections drop after idle | `keepAliveTimeout` is 65 s (`Keep-Alive: timeout=65`), `headersTimeout` 66 s |
+| Want threads / persistent storage | Run `powershell -ExecutionPolicy Bypass -File _server\scripts\make-cert.ps1`, then `_server\start.ps1 -Tls`; open `https://<host>:8443/`. `RR4_TLS=1` starts the HTTPS listener beside the untouched `:8080`; a missing cert logs one line and HTTP keeps serving |
+| Embedded `/play` is not `crossOriginIsolated` | The shell document and the frame must both carry COOP/COEP. Since 2026-11-06 `/`, `/welcome`, `/games`, `/multiplayer`, `/lobby`, `/play*`, `/docs/*` and `/music` do — but only on loopback/HTTPS. A plain-HTTP LAN is intentionally not isolated |
+| Which relay URL does the server think it has? | `Invoke-RestMethod http://127.0.0.1:8080/api/netplay-config`. The page still hardcodes `:3010`, so an `https:` page needs the relay reachable on `:3010` |
+
+Smoke it in one pass:
+
+```powershell
+cd _server
+node scripts/https-smoke.mjs http://127.0.0.1:8080       # 47/47
+node scripts/https-smoke.mjs http://<host-lan-ip>:8080  # 35/35, no COOP by design
+```
+
+## 4.2.3 netplay does not work
+
+Expected. EmulatorJS 4.2.3's handshake completes but host input frames stay at
+`currentFrame = 0`; it does not stream video. Use `/play-net` (4.3.0-pre).
+
+## Native game: display looks zoomed / desktop is 1024×768
+
+`settings.toml` `fullscreen = 2` is **Exclusive**. On this workspace it switched
+the desktop to 1024×768. Set:
+
+```toml
+[video]
+fullscreen = 0
+```
+
+Then relaunch. Closing the game should restore the desktop. The Settings page
+documents the hotkey **Alt+Return**, but it did not visibly toggle fullscreen in
+this workspace; Borderless is still being verified.
+
+## Native game: pad not detected
+
+- Confirm the pad in Windows first (Xbox Accessories / `joy.cpl`).
+- Open the launcher: Player 1 should show the controller and **connected**.
+- The runtime log should contain
+  `opened controller for slot: <name>`.
+- If not, set `p1_device = "gamepad"` in `settings.toml`, or reselect the device.
+- If you edited `input.ini`/`keybinds.ini`, restart the game.
+
+## Native game: disc rejected
+
+- Use the USA **SLUS-00797** dump.
+- Track 1 must be **621,421,920 bytes**, MD5
+  `bf1d92037b1b2be83b459c11f0b89eb6`.
+- Select the `.cue`, not a track `.bin` or a ZIP.
+- Keep every `.bin` track named exactly as the CUE's `FILE` entries and in the
+  same folder.
+- The launcher should report `Serial SLUS-00797`, `Region NTSC-U`,
+  `ISO head: OK`, `Disc verified`.
+
+## Native game: OpenBIOS missing
+
+The repaired v1.0.0 package includes `bios\openbios.bin`. If it is missing,
+restore it from the release or the pinned PSXRecomp submodule, keep
+`OpenBIOS.LICENSE`, or select **Custom BIOS** and point at your own valid dump.
+
+## Host-stream fallback: black or frozen stream
+
+The fallback page is `/lobby` (the shell's **LOBBY** button), not `/`.
+
+- Start with `start-test.bat` first: it loops a known test capture, so you can
+  separate encoder problems from game-window problems.
+- The native window must stay foreground and unobstructed.
+- Check ffmpeg exists at `_tools\ffmpeg\bin\ffmpeg.exe`.
+- If audio capture fails, the stream falls back to video-only; that is expected.
+- Attach mode (`RR4_ATTACH=1`) never launches the game; start it yourself and
+  match the window title/PID.
+
+## Browser pad not detected
+
+- Chromium exposes the Gamepad API on plain-HTTP LAN; some browsers require
+  HTTPS or `localhost`.
+- Test at `http://localhost:8080/play` on the host; the native fallback pad test
+  is at `http://localhost:8080/lobby`.
+- Connect wired or pair the pad before opening the page.
+- Pads present before load are assigned into empty slots by `play.js` since
+  2026-11-06 (no harness yet). If it still does not respond, open **Control
+  Settings** and select the pad for the player.
+- In EmulatorJS, open the control settings and remap.
+
+## Ports are already in use
+
+The stop scripts assume **8080** and **3010**:
+
+```powershell
+cd _server
+stop.bat
+```
+
+If you changed `RR4_PORT`, stop the Node process manually or close the cabinet
+console window. For the relay only, use `stop-netplay.bat`.
+
+## `/docs`, `/docs/<section>` 404s or takes an extra hop
+
+`/docs` and `/docs/` **301** straight to `/docs/introduction` on the cabinet
+server; no JavaScript is needed to reach the manual. The clean section URLs
+**301** to their first page: `/docs/multiplayer` → `/docs/multiplayer/lan`,
+`/docs/games` → `/docs/games/ridge-racer-type-4`, `/docs/play` →
+`/docs/play/browser`. All of these redirects are registered explicitly in
+`_server\src\server.js` (`DOCS_SECTION_PAGES` and the `/docs` handler) because
+the generated `dist\docs\<section>\` folder has no `index.html`.
+
+- If you get a 404 instead, the running `:8080` predates `DOCS_SECTION_PAGES`;
+  restart the server.
+- If the redirect lands on an empty directory listing, the docs build wrote
+  elsewhere. Rebuild with `cd docs; npm run build` (output is `docs\dist\docs`).
+- The generated `/docs/games.html`, `/docs/play.html` and
+  `/docs/multiplayer.html` client stubs are still there for a bare static host.
+
+## A page still runs an old shell / macro
+
+App scripts (`/js/enter.js`, `/js/multiplayer.js`, `/js/play-net.js`) are served
+with `Cache-Control: no-cache` and an ETag, so a normal reload picks up the new
+build. If a browser or proxy insists on a cached copy, the script tags carry a
+`?v=YYYYMMDD` query — bump it in `enter.html` / `multiplayer.html` /
+`play-net.html` and hard-reload once.
+
+## Where the logs are
+
+| Path | What |
+| --- | --- |
+| `_runtime/web-cabinet.log` | native fallback cabinet (`/lobby`) |
+| `_runtime/netplay-integration.log` | netplay harness |
+| `_runtime/netplay-integration-results.json` | netplay check summary |
+| `_runtime/mp-lobby-ui.json` | 2P lounge UI + handoff result (33/33) |
+| `_runtime/mp-lobby-ws.json` | raw `/mp` transport result (22/22) |
+| `_runtime/mp-macro-evidence.json` | host macro stages (6/6, host-only, final-frame race check) |
+| `_runtime/mp-race-e2e.json` | two-browser race result (40/40, guest P2) + frames |
+| `_runtime/mp-race-e2e-*.png` | race/grid screenshots (host + guest) |
+| `_runtime/calib/` | course/car calibration screenshots for the macro |
+| `RidgeRacer4Recomp/psx_last_run_report.json` | native runtime last-run report |
+| `_run_out.txt`, `_run_err.txt` | ad-hoc native launch logs |
+
+## Still stuck
+
+Capture the exact URL, the host/guest roles, the browser console, the relay
+`/health` output, and the relevant log tail. That is usually enough to tell
+whether the failure is transport, capture, emulator boot, or input mapping.

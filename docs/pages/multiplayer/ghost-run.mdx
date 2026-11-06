@@ -1,0 +1,599 @@
+---
+title: "Ghost replay (Rage Racer & Ridge Racer 1994)"
+sidebar_label: Ghost replay
+description: "Turn-based Time Trial for Rage Racer and Ridge Racer 1994: the finished run becomes the other seat's native replay, and on Ridge's race screen and Rage Grand Prix a live ghost car is also rendered in-game (Route B). What is proved, the RAM addresses, and what it is not."
+---
+
+**GHOST** is the turn-based way to put two people on a Rage Racer or Ridge Racer
+1994 session. Nobody drives alongside anybody at the same time: one seat drives a
+run, the game tapes it, and the other seat gets a ghost out of it. There are two
+doors to that ghost, and both ship today:
+
+| Route | What the other seat sees | Label |
+| --- | --- | --- |
+| **A — native replay** | after the run, the game's own full-screen **REPLAY** plays the other seat's stored tape | **`ghost replay (sequential)`** |
+| **B — live ghost** | during the race, the other seat's tape is applied every frame to a spare rival car slot, so a second car is **drawn** on track next to you | **`ghost rendered (in-game)`** — Ridge's race screen and Rage **Grand Prix** only; Rage **Time Attack** falls back to A |
+
+Route B is the **default** in a ghost room (`mpLiveGhost=1` is appended by the
+shell and by the standalone lounge); `mpLiveGhost=0` opts out and leaves exactly
+the old replay-only behaviour. On Rage it is used in **Grand Prix**, where the
+disc already draws every rival slot; Time Attack never draws the rival slots and
+still gets the sequential replay.
+
+<div className="rr-note">
+The ghost is <b>drawn, not simulated</b>. Its pose comes from the tape every frame,
+but it has no physics of its own: no collision, no shadow, no AI, and it cannot
+push you off the road. Rage Time Attack is <b>replay-only</b> — never call it a
+ghost car.
+</div>
+
+- Product flow, lounge controls and handoff: this page.
+- The shared car (both pads, one car, at the same time):
+  [Shared car](/multiplayer/shared-car).
+- Rooms, DISC selector, plan and the R4 macro: [2P lounge & race handoff](/multiplayer/lounge).
+- Ports and firewall: [LAN multiplayer](/multiplayer/lan).
+
+## How a ghost session runs
+
+<div className="rr-route"><b>SHELL</b>  /  →  ENTER  →  /welcome  →  2P LOUNGE
+  │
+  ├─ /multiplayer   DISC: RAGE / RIDGE + <b>DRIVE: GHOST</b> + <b>TURN: HOST</b>
+  │     └─ ws://host:8080/mp    room, drive, turn, both READY
+  │
+  └─ handoff  /play-net?…&game=ridge&amp;<b>mpGhost=ghost&amp;mpTurn=host</b>
+        · &amp;mpLiveGhost=1 (default) also renders the rival tape in-game
+        · one pad live per run (this run's driver); the other is gated
+        · host starts a solo run by hand (Rage: GRAND PRIX for the live ghost)
+        · the disc's own recorder tapes it → IndexedDB rr4-ghost
+        · finish → native REPLAY plays the <i>other</i> seat's stored tape
+        · REMATCH flips TURN → the other seat drives run 2</div>
+
+1. On both machines open `http://<host-lan-ip>:8080/`, press **ENTER**, then
+   **2P** in the shell top bar.
+2. Set **DISC** to `RAGE // RAGE RACER` or `RIDGE // RIDGE RACER`, then set
+   **DRIVE** to **GHOST**. The hint under the selector reads
+   `GHOST · TURN-BASED TIME TRIAL - THE RUN YOU FINISH BECOMES THE OTHER'S GHOST`.
+   The choice is remembered in `localStorage['rr4.mp.drive']`; `?drive=ghost`
+   preselects it.
+3. Leave **TURN** on **HOST** for the first run. The invite link is
+   `/multiplayer?room=CODE&game=<key>&drive=ghost&turn=host`.
+4. Host: **CREATE ROOM** (or type a code). Guest: join with the code, the room
+   row or the invite link. The guest adopts the room's disc, drive and turn.
+5. Both pick a team and press **READY**. Both tabs show the same 3-2-1-GO
+   overlay, whose kicker is `DRIVER: HOST` (or `DRIVER: GUEST`), and the shell
+   loads `/play-net` with `&game=<key>&mpGhost=ghost&mpTurn=<turn>`.
+6. The host starts the disc's normal **single-player** race by hand (Rage Racer:
+   pick **GRAND PRIX** — that is the mode with a live ghost; Ridge Racer: the
+   normal race screen). Only the driver's pad is live; the other pad is dropped
+   by the host gate (stage log: `GHOST TURN-BASED - host starts a solo run;
+   DRIVER: HOST.`). With a rival tape already stored, the live ghost is drawn on
+   track while you drive (see [Route B](#route-b--the-live-ghost-car-on-track)).
+7. Finish the run. The game's own **REPLAY** screen plays the rival seat's stored
+   tape if one exists; otherwise it plays the run you just finished (there is no
+   rival tape yet).
+8. Click **REMATCH** on both tabs. The rematch flips the turn, the host recreates
+   the same room, the guest re-joins, and **TURN GUEST** is this run's driver.
+   After the second run the host has both tapes and either seat can watch the
+   other's replay.
+
+Two runs are the minimum. The first run of a fresh room always plays back its own
+tape, because the rival has not recorded anything yet.
+
+## What each seat sees
+
+| Surface | Ghost room | Live room (shared car) |
+| --- | --- | --- |
+| Start card | `DRIVE LIVE / GHOST` segmented control, GHOST selected (Rage/Ridge only; both buttons are disabled for R4 with the hint `RAGE + RIDGE ONLY`) | LIVE selected |
+| Room card | `DRIVE GHOST // TURN-BASED TIME TRIAL` plus a `TURN HOST` / `TURN GUEST` row | `DRIVE LIVE // SHARED CAR`, turn row hidden |
+| Rooms list | a `GHOST` badge next to the disc badge | no badge |
+| Handoff overlay | kicker `DRIVER: HOST` / `DRIVER: GUEST` and one line `SHARED // <car> · DRIVER: <seat>` | `SHARED CAR // BOTH PADS DRIVE` |
+| `/play-net` chip | `GHOST` prefix, the seat and the relay room, e.g. `GHOST - HOST P1 - RIDGE-GHST` | `GUEST P2 SHARED - RIDGE-<code>`, then `GUEST P2 LIVE` |
+| Netplay panel | a GHOST block: status, `DRIVER:`, `RIVAL TAPE <n>f`, the storage line, a **LIVE** row (ON/OFF + `SYNTHETIC 161f × 40 B @ 0x…`) and **WATCH RIVAL** | no GHOST block |
+
+The drive and turn selectors are **host-only** and only editable before the grid
+locks. The guest's copies are disabled; a guest change is rejected with
+`Only the host can change DRIVE/TURN`.
+
+<div className="rr-note rr-note--warn">
+One pad is live per run. A ghost room is <b>not</b> a simultaneous two-player
+session: during the host's turn the guest can steer nothing, and during the
+guest's turn the host can steer nothing. Both pads still reach the host core; the
+host gate is what decides which one is real.
+</div>
+
+## Lounge contract
+
+`_server/public/mp-games.json` still owns the disc list; `drive` and `turn` are
+room state on the `/mp` socket, not manifest fields.
+
+| Field | Values | Where it lives | Notes |
+| --- | --- | --- | --- |
+| `drive` | `live` / `ghost` | room state, `/mp` `create`, `{type:'drive'}` | default `live`; only meaningful for `rage`/`ridge`; R4 ignores it |
+| `turn` | `host` / `guest` | room state, `/mp` `create`, `{type:'turn'}` | default `host`; this run's driver; only meaningful in `ghost` |
+| `TURN` display | `TURN HOST` / `TURN GUEST` | room card (both seats) | host editable, guest read-only |
+| `DRIVE` display | `DRIVE GHOST // TURN-BASED TIME TRIAL` / `DRIVE LIVE // SHARED CAR` | room card, rooms list | the list carries `drive` only, never `turn` |
+| Deep link | `?game=ridge&drive=ghost&turn=guest` | `/multiplayer` | beats the stored choice, like `?game=` |
+| Invite | `/multiplayer?room=CODE&game=<key>&drive=ghost&turn=host` | room card COPY | a live room carries `&drive=live` and no `&turn=` |
+| Persistence | `localStorage['rr4.mp.drive']` | browser | only `live`/`ghost`; the turn is per room, not stored |
+
+Server messages (all on `ws://<host>:8080/mp`):
+
+| Message | From | Accepted when | Errors |
+| --- | --- | --- | --- |
+| `create {name, code, game, drive?, turn?}` | either seat | — | unknown values fall back to `live` / `host` |
+| `{type:'drive', drive}` | host only | lobby (not after READY) | `Only the host can change DRIVE/TURN`, `Grid is locked`, `Unknown drive mode` |
+| `{type:'turn', turn}` | host only | lobby (not after READY) | `Only the host can change DRIVE/TURN`, `Grid is locked`, `Unknown turn` |
+| `{type:'setgame', game}` | host only | lobby | unchanged: `Only the host can change the disc`, `Unknown disc` |
+
+- `drive`/`turn` never touch the rolled plan, so a mode change does not clear
+  `track`/`cars`; the plan is still rolled once, on the second READY.
+- The `race` payload adds `drive` and `turn` next to `game`, `mode`,
+  `guestPlayerIndex`, `trackSelection`, `trackCount` and `carCount`.
+- The **server never flips the turn itself**. The game page flips it on rematch
+  and passes it back through the lounge URL, so a reload cannot silently fall
+  back to a live shared car.
+- A `live` room sends `drive: 'live'` and `turn: 'host'`, and `play-net.js`
+  ignores both for the ghost engine — the shared-car path behaves exactly as
+  before.
+
+## Handoff parameters
+
+```text
+/play-net?embedded=1&threads=0&mpRole=host|guest&mpRoom=CODE
+          &mpRace=…&mpTrackIndex=…&mpCarHost=…&mpCarGuest=…
+          &game=rage|ridge&mpGhost=ghost&mpTurn=host|guest&mpLiveGhost=1|0
+```
+
+| Parameter | Values | What `play-net.js` does |
+| --- | --- | --- |
+| `game` | `rage` / `ridge` | picks the manifest entry and the RAM map; `mpGhost` is ignored for `r4` |
+| `mpGhost` | `ghost` / `live` / absent | `ghost` enables the engine; absent or `live` leaves it completely off |
+| `mpTurn` | `host` / `guest` | selects this run's driver and therefore the peer seat whose tape is replayed; anything else reads as `host` |
+| `mpRole` | `host` / `guest` | the host runs the core, installs the turn gate and captures; the guest sends input and watches |
+| `mpLiveGhost` | `1` (default in a ghost room) / `0` / absent | Route B. `1`/`true`/`on`/`yes` also drives a spare rival slot from the tape **while the race runs**; `0`/absent leaves Route A byte-identical (no stub, no patch, no LIVE row) |
+
+`mpLiveGhost=1` is what the shell (`enter.js`) and the standalone lounge
+(`multiplayer.js`) append for every `drive: ghost` room — it is the product
+default, not a hidden flag. To opt out, drop the parameter or set
+`mpLiveGhost=0` on the `/play-net` URL; a ghost room then behaves exactly like the
+replay-only build. It is ignored when `mpGhost` is absent/`live`, and ignored for
+R4.
+
+`mpGhost`/`mpTurn` are only emitted by a `drive: ghost` room (`live` rooms carry
+`mpGhost=live` or omit it, and never carry `mpTurn`). Rematch payload and URL:
+
+```text
+{ type: 'rr4-rematch', code, role, game, drive: 'ghost', turn: <next> }
+/multiplayer?room=CODE&host=1|0&embedded=1&game=<key>&drive=ghost&turn=<next>
+```
+
+`<next>` is the other seat — `turn=host` becomes `turn=guest` and back. The host
+recreates the same code with those values; the guest adopts the room's values and
+never rolls its own.
+
+## Route A: the native replay per disc
+
+Everything is RAM-only through `Module.HEAPU8`. The page locates the PSX 2 MiB
+window once per page by scanning for the 64-byte exe text at vaddr `0x80010000`
+(Ridge `F/A RACING…`, Rage `INSERT CONTROLLER…`), then reads and writes
+`ramBase + (addr - 0x80000000)`. No disc image is patched.
+
+The tape is read or written only on a screen/scene transition — never per frame.
+
+### Ridge Racer 1994 (`SCUS-94300`)
+
+The replay is a post-race, whole-screen state (`3 → 8 → 9`), and the tape is the
+game's own per-frame pose record.
+
+| Cell | Address | Meaning |
+| --- | --- | --- |
+| screen id | `0x801D6D28` u16 | `3`/`12` results (one handler, `0x8001CA1C`), `8` replay setup, `9` playback |
+| tape pointer | `0x80080434` u32 | **the applier reads the tape through this pointer** |
+| documented base | `0x8006CE7C` | 40 B/frame — writes here succeed and are ignored by the applier |
+| staged tape | zeroed BSS run in `0x801E0000`–`0x801F0000` (found `0x801E4840`) | where the product writes the tape |
+| count | `0x801EB020` u32 | frames; product cap **161** |
+| recorder | `0x801D6D18` u32 | `1` = recording; never swap while it is 1 |
+| playback frame counter | `0x80176AE4` u16 | the playback index; `0xFFFF` restarts it (direct fallback with screen 9) |
+| results wait | `0x80131014` u32 | `511` lets the results screen flip to 8, then 9 |
+
+Arming (what the game does at race start): `0x801EAFF0 = 1`,
+`0x80176CBC = course`, `0x80176CE4 = 0`, `0x801EB000 = 0`,
+`0x801EAF90 = 0x80071A0C`, `0x80131014 = 511`.
+
+- **Capture** at the results screen: read `count`, clamp to `161`, read
+  `count × 40` bytes, store.
+- **Swap** the peer bytes into the staged BSS run and write the peer `count`; the
+  pointer is already repointed. At screen 9 the direct path also rewinds
+  `0x80176AE4 = 0xFFFF`.
+- **161 records is the cap** because the screen dispatch table sits at
+  `0x8006E7BC`, 6,464 B above `0x8006CE7C` — 161.6 records. A 300-record write at
+  the documented base overwrites the table and freezes the core on the next
+  frame. 161 records ≈ **2.7 s** at 60 Hz.
+
+### Rage Racer (`SLUS-00403`)
+
+Rage has a native 43,200-byte pose tape and a full-screen replay, but the only
+supported way in is the **RACE frame's own finish branch**. Poking scene 17 from
+the frontend freezes, because `BeginReplay()` never ran.
+
+| Cell | Address | Meaning |
+| --- | --- | --- |
+| scene id | `0x801E3FEC` s32 | `12` RACE, `17` REPLAY (15/16 are race-end screens and **not** on the finish path) |
+| `g_RacePhase` | `0x801E6B7C` s16 | `4` = the finish branch is armed |
+| lap | `0x8009E544` s16 | must equal the race length + 1 |
+| race length | `0x801E406C` s32 | laps of this run (3 Time Attack, 6 Grand Prix) |
+| finish timer | `0x801E4104` s16 | the RACE frame counts it `0 → 131` itself, then calls `BeginReplay` + `SetScene(17)` |
+| tape | `0x801E8804` | `43,200` B (`0xA8C0`) |
+| count | `0x8019C874` s32 | **subframes** (Grand Prix 1,800 / Time Attack 3,084) |
+| write / read / wrapped | `0x801E48B8` / `0x801F30C4` / `0x8009E994` | tape cursors |
+| mode | `0x801E4AB4` s16 | `1` = Grand Prix (48 B/sample), `0` = Time Attack (28 B/sample) |
+
+- **Capture** on the Rage replay transition (scene 17, before the peer swap; 15/16
+  stay as a harmless fallback): read `mode` and `write`, clamp to the format's
+  sample cap and to `43,200 / stride`, read `count × stride` bytes, store with
+  `mode`.
+- **Swap**: write the peer bytes at `0x801E8804`, then `count = N`,
+  `write = N + 2`, `read = 0`, `wrapped = 0`. A Time Attack tape never swaps into
+  a Grand Prix replay (or the reverse): the page logs `GHOST // MODE MISMATCH`.
+- To start a replay on demand (for example after the race was stopped early), the
+  page arms `g_RacePhase = 4` and `lap = raceLength + 1` and lets the RACE frame
+  do the rest. **WATCH RIVAL** uses each disc's proved trigger — Ridge arms the
+  results wait so the game walks `8 → 9`, Rage arms the finish branch.
+
+Cross-checks and the probe sequences:
+`_runtime/ghost-research/ridge-rea.md`, `rage-rea.md`, `tape-probe.md`,
+`rage-finish-probe.md`.
+
+## Route B — the live ghost car on track
+
+Route B keeps A exactly as it is and adds a **second car to the running race**:
+the peer's tape is applied to a **spare rival car slot** every frame, and the
+disc's own car renderer draws that slot. Nothing is patched on disc — a small
+stub is written into PSX RAM after boot and **one shipped code word** is
+repointed at it, then restored.
+
+### Mode matrix (what B actually gives you)
+
+| Disc / mode | Live ghost? | What you see | Panel status | Label |
+| --- | --- | --- | --- | --- |
+| Ridge Racer 1994 — race screen (id `1`, handler `0x800143CC`) | **yes** | the rival tape's car drawn in the race, next to your own car | `GHOST // LIVE (RIDGE)` | `ghost rendered (in-game)` |
+| Rage Racer — **Grand Prix** (`g_GrandPrixMode = 1`) | **yes** | the rival tape's car drawn among the rival slots | `GHOST // LIVE (RAGE GP)` | `ghost rendered (in-game)` |
+| Rage Racer — **Time Attack** (`mode 0`) | **no** — falls back to A | the post-race native replay only | `GHOST // REPLAY (draw-path-unverified)` | `ghost replay (sequential)` |
+| R4 | never | VS Battle, untouched | ghost block hidden | — |
+
+Rage Time Attack is the honest hole: `DrawCars` is gated on `g_GrandPrixMode != 0`,
+so a Time Attack run never draws the rival slots at all — there is no slot for a
+ghost to ride. Three probe passes tried the gate, `0x800438E0` and the DrawCars
+path and none produced a second car, so TA keeps the A replay. **Never call a
+Rage TA ghost a "ghost car" or an in-game ghost.**
+
+### `mpLiveGhost` — default on, opt-out by parameter
+
+| URL | Route B | Route A |
+| --- | --- | --- |
+| `…&mpGhost=ghost&mpTurn=host&mpLiveGhost=1` | on (what the lounge emits) | still on, still the post-race replay |
+| `…&mpGhost=ghost&mpTurn=host` (no flag) | **off** — no stub, no patch, no LIVE row | on |
+| `…&mpGhost=ghost&…&mpLiveGhost=0` | off | on |
+| `…&mpGhost=live&mpLiveGhost=1` | off (needs a ghost room) | off (no ghost engine) |
+
+`1` / `true` / `on` / `yes` all read as on. The **shell** (`enter.js`) and the
+**standalone** lounge (`multiplayer.js`) append `&mpLiveGhost=1` to every
+`drive: ghost` handoff and to the rematch navigation, so a normal ghost room gets
+the live ghost without anyone typing a flag. `mpLiveGhost` is ignored for R4 and
+in a `live` room.
+
+### The injection, per disc
+
+Patch timing matters: the stub is written at boot, but the **hook word is only
+repointed while the race frame can call it** and is restored outside the race. A
+boot-time patch stalls Rage's prologue (the scene-32 walk), so a permanently
+patched page never reaches the race.
+
+**Ridge Racer 1994** (`SCUS-94300`)
+
+| Item | Address / value |
+| --- | --- |
+| hook | `0x80015014`, shipped `0x0C0092E3` (`jal 0x80024B8C`) → `0x0C07A984` (`jal 0x801EA610`) |
+| stub | `0x801EA610`, **208 B / 52 words**, in the runtime-verified quiet BSS band; reads back byte-identical |
+| ghost slot | `0x801EDA10` = slot 11 of the 12-slot array `0x801ECE34 + k*0x114` (the old `0x801FDA10` was `0x10000` too high, which is why the first probe's Ridge ghost never drew) |
+| ghost tape | `0x801E4840`, 600 × 40 B = 24,000 B, inside the measured first zero run (`0x801E483C`, 33,656 B) |
+| applier | `applyReplay` `0x8002A894`; the tape pointer `0x80080434` (live value `0x8005CE7C`) is saved, pointed at the ghost tape, and restored around every apply |
+| count gate | `0x801EB020` forced to `0x7FFF` while armed (the applier will not pose at count 0) |
+| draw gates | slot `+0x00 = 1` and `+0x58 = 1`, forced every frame |
+
+**Rage Racer** (`SLUS-00403`, Grand Prix)
+
+| Item | Address / value |
+| --- | --- |
+| hook | `0x8003875C`, the `DrawCars()` entry: shipped `0x27BDFFD8` (`addiu sp,sp,-40`) → `0x0807D1C0` (`j 0x801F4700`) |
+| stub | `0x801F4700`, **324 B / 81 words** — the DrawCars-entry variant: keeps the caller's `ra` in `$k0`, applies the ghost subframe, then performs the real prologue and continues at `0x80038760` |
+| ghost slot | `g_Cars[10]` `0x801F4194` (stride `0x19C`): `activeFlag +0xAC = 0`, `aiEnabled +0xBC = 1`, `modelIndex +0xAE = 10` |
+| ghost tape | **second buffer** `0x801F4850`, inside the measured 43,008 B free span `0x801F4800`–`0x801FF000` (600 GP records = 28,800 B) |
+| applier | `ApplyReplayFrameAndTrackPoint` `0x8001F8A0`; the pointers `0x8009EDAC` (GP) / `0x8019C4AC` (TA) are swapped to the ghost tape per apply and restored |
+| recorder | `0x80036F4C` is **kept**, so the game still records this seat's run into its own 43,200 B arena and A's capture works in the same race |
+
+The tape comes from A's stored peer tape when its stride/mode match, else A's
+synthetic tape, else a pose tape built from the live car. The cursor loops when
+the tape runs out (the harness saw 1 loop on Rage and 3 on Ridge over ~10 s), so a
+short tape repeats rather than freezing.
+
+### What the player sees
+
+- A **second car** appears on the road with the pose the tape recorded: same
+  position, heading, body height and attitude, the tape's model word for the car
+  and its recorded wheel/steering values. On Ridge it is a rival slot the game
+  already draws; on Rage it is the 11th rival slot.
+- Enabling and disabling it changes **only that car** in the frame — the A/B
+  captures (below) localise the change to the ghost, not to the camera or the
+  scene.
+- **You still drive.** The harness held the throttle with the ghost live and the
+  player car moved 298 units on Rage and 318 units on Ridge, with no page error.
+- **The ghost does not interact.** No collision, no contact, no shadow/AI: it is a
+  drawn pose, not a simulated car. You can drive through it.
+- After the race, A is unchanged: the native REPLAY still plays the rival tape
+  full screen.
+
+### Panel, statuses and diagnostics
+
+With `mpLiveGhost=1` the GHOST block gains a **LIVE** row: an `ON`/`OFF` button
+(the runtime A/B toggle — it never leaves the ghost pinned on outside a race) and
+a meta line such as `SYNTHETIC 161f x 40 B @ 0x801e4840 // BAND 0x801e4840`. The
+collapsed chip prefixes `LIVE` while the ghost is armed.
+
+| Status | Meaning |
+| --- | --- |
+| `GHOST // LIVE (RIDGE)` | ridge: stub installed, hook repointed, the race screen is up and a tape is staged |
+| `GHOST // LIVE (RAGE GP)` | Rage: the same, in Grand Prix |
+| `GHOST // REPLAY (draw-path-unverified)` | Rage Time Attack: B cannot draw, A's replay is the offer |
+| `GHOST // REPLAY (not-in-race)` | the stub exists but the disc is on a menu / results screen |
+| `GHOST // REPLAY (guest-core)` | this page is the guest; the host core is the one with the ghost |
+
+Diagnostics on the page:
+
+- `window.__R4NET.live` — `.enabled`, `.installed`, `.armed`, `.enable`,
+  `.specKey` (`ridge:race` / `rage:gp`), `.specLabel`, `.error`, `.hook`,
+  `.patchWord`, `.stubAddr`, `.slot`, `.tape {count, samples, stride, mode, addr,
+  bytes, source}`, `.stubInfo`, `.hookInfo`, `.frames`, `.applied`, `.loops`,
+  `.resets`, `.status` (`LIVE (RIDGE)` / `REPLAY (…)`).
+- `window.__R4NET.live.setEnable(0)` pins the ghost off; `setEnable(null)` returns
+  to the automatic rule (race + tape).
+- `#npChip.dataset.liveGhost` is `1` while armed, `0` while the stub is idle.
+- Stage log: `GHOST // LIVE STUB 0x… (… B, … words) -> hook 0x… 0x… -> 0x…`,
+  `GHOST // LIVE TAPE SYNTHETIC 161f x 40 B = 6440 B @ 0x801e4840 (RIDGE)`,
+  `GHOST // LIVE - Rage recorder kept (ghost tape in the second buffer); this run
+  is still taped for the rival.`, `GHOST // LIVE RIDGE band rewritten by the game
+  - re-placing the stub block`, `LIVE GHOST armed (Route B, ridge) - stub + one
+  word patch in RAM, peer tape of the guest.`
+
+### Route B limits
+
+1. **Drawn, not simulated.** A tape pose in a rival slot: no physics, no
+   collision, no shadow, no AI. Do not claim a second car you can race or hit.
+2. **Mode-gated.** Live only in Ridge's race screen and Rage **Grand Prix**.
+   Rage Time Attack is replay-only (`draw-path-unverified`).
+3. **Host only.** The host core carries the stub; a guest page reports
+   `REPLAY (guest-core)`. Your own recording keeps running (Rage's recorder is not
+   nop-ed), so A stays available in the same race.
+4. **Synthetic tapes in the evidence.** The harness stages a 161-record Ridge tape
+   and a 240-subframe Rage GP tape from the live/static pose. No human lap has
+   been recorded and no lap time is claimed.
+5. **RAM injection, not a patch.** Two discs, one 4-byte word each, restored after
+   the run. A game update or a different region invalidates the addresses; the
+   install verifies every shipped word before writing and refuses when it does not
+   match.
+6. **A short tape repeats.** The cursor loops; a 2.7 s Ridge tape therefore
+   replays its motion rather than holding still.
+
+## The turn gate
+
+The host wraps `gameManager.functions.simulateInput` — the cwrap function the
+netplay client applies the opposing seat's remote input through, **not**
+`gameManager.simulateInput`, which is the EJS-side method the R4 guest gate wraps.
+
+| Turn | Player 0 (host pad) | Player 1 (guest pad) |
+| --- | --- | --- |
+| `host` | passed through | dropped (`gatedInputs++`) |
+| `guest` | dropped (`gatedInputs++`) | remapped to player 0 (`remappedInputs++`) |
+
+- In ghost mode the **shared-car remap is not installed** — ghost replaces it.
+  There is exactly one live pad per run, so the two modes are mutually exclusive.
+- The wrapper is marked `__rr4GhostWrapped` on both `fns.simulateInput` and
+  `fns`, and the install poll retries every 500 ms until
+  `gameManager.functions` exists (capped at 600 tries).
+- The **guest page installs no local gate** and sets `raceLive = true` at boot;
+  its pad is sent normally and the host gate decides. The gate is host-authoritative.
+- Diagnostics: `window.__R4GHOST.gatedInputs`, `.remappedInputs`,
+  `.gateInstalled`, `.turn`, `.state`, `.statusText()`. Stage log lines:
+  `GHOST turn gate: host pad only, guest pad dropped.` /
+  `GHOST turn gate: guest pad -> player 0, host pad dropped.`
+
+## Storage
+
+| Item | Value |
+| --- | --- |
+| Database | IndexedDB `rr4-ghost` |
+| Object store | `runs` |
+| Key | `` `${room}:${game}` `` — e.g. `GHST:ridge`, `GHSR:rage` |
+| Value | `{ host: Tape, guest: Tape }` |
+| Tape | `{ room, game, mode, stride, count, bytes, seat, turn, at, trackIndex }` |
+| Byte cap | 43,200 |
+| Fallback | an in-memory `Map` when IndexedDB is unavailable |
+
+- Both seats are kept under the same key; a new run overwrites **that seat's**
+  tape only.
+- Both tapes live in the browser that runs the core — the host. The guest never
+  boots a race, so it watches the swapped replay through the host stream.
+- A different room code is a different key, and clearing site data loses the
+  ghosts. That is deliberate: a tape is only valid for its disc, mode and course.
+
+## Panel, chip and statuses
+
+The netplay panel gains a GHOST block: the status line, `DRIVER: HOST|GUEST`,
+`RIVAL TAPE <n>f` (or `NO RIVAL TAPE`), a storage line such as
+`indexeddb // GHST:ridge // TAPE 0x801e4840`, and **WATCH RIVAL**. With
+`mpLiveGhost=1` it also carries the **LIVE** row described under
+[Route B](#route-b--the-live-ghost-car-on-track). The chip keeps the collapsed
+display the guest actually reads: `GHOST - HOST P1 - RIDGE-GHST`.
+
+| Status (Route A) | Meaning |
+| --- | --- |
+| `GHOST // WAITING FOR CORE RAM` | the PSX window has not been located yet |
+| `GHOST // COLLECTING` | no rival tape yet; this run is being taped |
+| `GHOST // NO TAPE YET` | this seat finished, the rival has not |
+| `GHOST // READY (RIDGE)` / `GHOST // READY (RAGE)` | a rival tape is stored and the replay door is proved |
+| `GHOST // READY (TEST TAPE)` | a harness-staged test tape is loaded |
+| `GHOST // ARMING REPLAY` | the Rage finish branch is armed; the RACE frame is counting its 131 frames |
+| `GHOST // REPLAY GUEST RUN` / `… HOST RUN` | the native replay is playing that seat's tape |
+| `GHOST // MODE MISMATCH` | the rival tape is Rage GP and this run is TA (or the reverse) |
+
+**WATCH RIVAL** is enabled once a rival tape exists; it stages the peer tape and
+starts the replay. The same swap happens automatically on the finish transition,
+so the button is the manual re-run, not the normal path. The page caps automatic
+swaps at 8 per page and then leaves the button as the only trigger.
+
+Route B statuses (`GHOST // LIVE (RIDGE)`, `… (RAGE GP)`, `GHOST // REPLAY
+(draw-path-unverified)`, `… (not-in-race)`, `… (guest-core)`) are in the
+[Route B](#route-b--the-live-ghost-car-on-track) section.
+
+## Limits
+
+1. **One driver per run.** Ghost mode is turn-based: one live pad per run, decided
+   by `TURN` and enforced by the host gate. A live ghost room also **draws** the
+   rival's tape on track (Route B, Ridge race screen + Rage Grand Prix), but that
+   car has no physics — it is not a simultaneous 2P race.
+2. **A live ghost is drawn, not simulated** — and only in Ridge's race screen and
+   Rage **Grand Prix**. Rage **Time Attack** has no draw path for the rival slots,
+   so it stays a post-race replay (`GHOST // REPLAY (draw-path-unverified)`).
+   Never describe a Rage TA ghost as a ghost car, and never claim collision.
+3. **Route A replaces the screen.** When the replay plays you watch the native
+   REPLAY screen (its own camera and HUD), not your own race with a ghost in it.
+   Route B is the opposite: the ghost is inside your race, and the replay still
+   happens afterwards.
+4. **Ridge tapes are short.** Route A caps the tape at 161 records (6,440 B,
+   ≈ 2.7 s at 60 Hz) — a replays ceiling set by the screen dispatch table. The
+   Route B tape in the quiet band is 600 records (24,000 B); either way a long
+   lap is not one tape, and B loops a short tape.
+5. **Rage replay evidence is Time Attack.** Grand Prix (48 B records, two cars) is
+   now covered on the **live-ghost** path (Route B), not as a native replay, and
+   the A harness run was stopped by the finish arm, not by crossing the line.
+6. **No human lap is in the evidence.** The harness tapes are synthetic: Ridge
+   stages 161 records built from the live pose, and Rage records a short straight
+   from a synthetic throttle hold (50 × 28 B Time Attack samples). Nothing here is
+   a measured human lap or a lap-time claim.
+7. **Two runs to be useful.** Run 1 has no rival tape; the replay after run 2 is
+   the first one that shows the other seat.
+8. **Tapes do not travel between browsers.** They are IndexedDB in the browser
+   that runs the core. The host is the only place both seats exist.
+9. **Mode and course must match.** A Rage TA tape never swaps into a GP run, and
+   a record carries only `trackPointIndex` — a tape from another course will look
+   wrong.
+10. **Guest limitations are unchanged.** Video-only stream (no guest audio), host
+    tab in the foreground, same numeric `EJS_gameID`.
+11. **R4 is untouched.** `drive`/`turn` exist in an R4 room (`live`/`host`) but the
+    drive control is disabled and the handoff carries no `mpGhost`/`mpTurn`.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `GHOST // WAITING FOR CORE RAM` | the core has not booted, or the exe signature was not found | Wait for the disc to draw; reload `/play-net` |
+| `WATCH RIVAL` is disabled | no rival tape stored | Finish a run from the other seat (REMATCH flips the turn) |
+| The replay shows your own run | no peer tape at swap time | Expected on the first run of a room |
+| Ghost block missing | `mpGhost` absent or `live`, or the disc is R4 | Pick GHOST in the lounge; the handoff must carry `&mpGhost=ghost` |
+| Handoff boots a live shared car | `drive=` dropped from the URL | The lounge adds it and the rematch keeps it; a stale tab or bookmark can drop it |
+| `GHOST // MODE MISMATCH` | Rage GP tape vs Time Attack run (or the reverse) | Run the same mode on both turns; the tape format differs (48 B GP / 28 B TA) |
+| `GHOST // REPLAY (draw-path-unverified)` with `mpLiveGhost=1` | Rage **Time Attack**: `DrawCars` is GP-gated, so there is no rival slot to draw | Expected — TA is replay-only. Use Grand Prix for a live ghost |
+| `GHOST // REPLAY (not-in-race)` | the stub is installed but the disc is on a menu / results screen | Start the race (Rage: GRAND PRIX); the hook word is only applied in the race |
+| `GHOST // REPLAY (guest-core)` | this page is the guest | The host core carries the ghost; the guest watches the host stream |
+| `mpLiveGhost=1` but no LIVE row | no ghost room (`mpGhost` absent/`live`) or R4 | Check the handoff URL and `window.__R4NET.live.enabled` |
+| Live ghost visible but frozen on one pose | the tape ran out and the cursor is at the end, or the band was rewritten | The cursor loops by itself; check `__R4NET.live.loops` / `.resets` and the `re-placing the stub block` log line |
+| Guest pad does nothing | it is the host's turn | The host gate drops player 1; check `window.__R4GHOST.gatedInputs` and the gate log line |
+| Host pad does nothing | it is the guest's turn | Same gate, other direction: `remappedInputs` rises instead |
+| Replay frozen / black on Rage | scene 17 was poked instead of the finish arm | Let the RACE frame count its 131 frames; the product arms `g_RacePhase`/lap, never the scene id |
+| Replay is static on Ridge | the tape was written at the fixed base `0x8006CE7C` | Stage in the BSS run and repoint `0x80080434` |
+| `Only the host can change DRIVE/TURN` | the guest touched the selector | Host changes it, or leave and re-join |
+| `Grid is locked` | the plan already rolled | REMATCH (keeps disc and drive, flips turn) or a new room |
+
+## Evidence
+
+| Area | Harness | Result | Scope |
+| --- | --- | --- | --- |
+| Ghost replay engine (Ridge + Rage) | `_server/test-mp-ghost-replay.mjs` → `_runtime/mp-ghost-replay.json` | **40/40** | **host-only, one browser, its own throwaway cabinet** (the recorded run used `:8097`; the harness walks to the next free port): the real cores boot with `mpGhost=ghost`; the 64-byte exe signature finds exactly one PSX window (`ramBase 0x005e96e8`, text `F/A RACING` / `INSERT CONTROLLER`); Ridge enters `3 → 8 → 9` and renders a race-like replay (50.5 % non-black vs 93.4 % frontend), the live car pose follows the staged tape (54/54 samples, 27 distinct playback frames), a stored peer tape is byte-exact at the applier pointer and changes the played pose and the rendered frame (322/322 samples over 161 frames), the count is never rewritten, the turn gate drops a player-1 press on `turn=host` and remaps a player-1 press to player 0 on `turn=guest`, and IndexedDB `GHST:ridge` keeps both seats after a database reopen (FNV-1a match). Rage reaches scene 12 by pad input, the RACE frame counts its own finish timer and enters scene 17 (`[12,17]`), the replay renders 99.9 % non-black, the pose follows the rival tape (107/107 samples, 27 distinct frames), the mirrored tape changes the framed sample (mean abs Δluma 13.2, 21.4 % rows), and the cursor resumes after the swap. `mpGhost=live` and `r4` keep the engine off; a ghost guest installs no local gate. No live drive, no human lap |
+| **Live ghost engine (Route B)** | `_server/test-mp-live-ghost.mjs` → `_runtime/mp-live-ghost.json` | **36/36** | its own cabinet (`:8088`, walks with `--port`/`--base`, `:8080` untouched), one real host core per disc, synthetic tapes: **Rage GP** — stub at `0x801F4700` (324 B / 81 words) reads back identical, the shipped `0x27BDFFD8` at `0x8003875C` is repointed to `0x0807D1C0` only inside the race (toggles 2), the ghost slot `0x801F4194` has `aiEnabled = 1` in every sample, the pose equals the tape record **16/16**, the A/B frame delta is **1118 cells (16.17 %)** against a **0-cell** noise floor, the player still drives (298 units with the ghost live), the stub/patch survive ~10 s, the turn gate is unchanged, and the recorder is kept so A still captures in the same run. **Ridge** — stub at `0x801EA610` (208 B / 52 words) byte-identical in the quiet band, `0x0C0092E3` at `0x80015014` repointed to `0x0C07A984` only on the race screen, the tape sits at `0x801E4840` (600 × 40 B = 24,000 B), slot 11 `0x801EDA10` carries both draw gates, the pose equals the tape **16/16**, the A/B delta is **846 cells (12.24 %)** against an **83-cell** noise floor, the player drives 318 units, and the ghost survives ~10 s / 3 tape loops. Flag matrix: `mpLiveGhost` absent → no stub, no patch, no LIVE row, A unchanged (`mp-live-ghost-a-replay.png` shows the A replay on screen 9); `mpGhost=live` → B off; R4 → B off, VS path untouched; `turn=guest` gate unchanged; 0 page errors; the spawned cabinet is killed and `:8080` re-probed. Host-only, **drawn not simulated**, synthetic tapes, no human lap |
+| Ghost lounge, two browsers | `_server/test-mp-ghost-lobby.mjs` → `_runtime/mp-ghost-lobby.json` | **36/36** | two browser contexts on its own spawned cabinet (the recorded run used `:8094`), `/play-net` document held: R4 keeps LIVE only and no ghost rows, the RIDGE GHOST selector persists in `localStorage['rr4.mp.drive']`, the room card and rooms-list GHOST badge, guest read-only selectors, host `TURN GUEST` propagating to both cards, the overlay `DRIVER: GUEST` with one `SHARED // <car> · DRIVER: GUEST` line, both handoff URLs carrying `mpGhost=ghost&mpTurn=guest` and an identical plan, a live room handing off `mpGhost=live` with no `mpTurn` and the `BOTH PADS DRIVE` overlay, 390×844 with no overflow, and a rematch that flips to `turn=host` and keeps `drive=ghost` on both sides. No emulator boot, no tape swap |
+| R4 / 2P regressions | `_server/mp-games-probe.mjs`, `test-mp-games-ui.mjs`, `mp-ws-probe.mjs`, `test-mp-lobby-ui.mjs`, `test-shell-fs.mjs` | **16/16**, **32/32**, **22/22**, **33/33**, **30/30** | unchanged: the multi-disc manifest, the multi-disc lounge UI, the raw `/mp` transport without `game`/`drive`/`turn`, the R4 lounge UI and the shell fullscreen path |
+
+Run the three ghost harnesses from `_server`; each spawns its own throwaway
+cabinet and never touches `:8080`:
+
+```powershell
+cd _server
+node test-mp-live-ghost.mjs     # Route B: live ghost stub + patch, A/B, flag matrix (36/36)
+node test-mp-ghost-replay.mjs   # Ridge + Rage replay engine (40/40)
+node test-mp-ghost-lobby.mjs    # two-browser DRIVE/TURN + handoff/rematch (36/36)
+```
+
+The replay harness expects the netplay relay on `:3010` but does not need a guest:
+only the host page joins its own room. Both harnesses write screenshots next to
+their JSON under `_runtime/`.
+
+## Screens
+
+<figure>
+  <img src="/docs/img/lan/mp-ghost-lobby-host.png" alt="2P lounge host card with DISC Ridge Racer, DRIVE set to GHOST, a room card reading DRIVE GHOST // TURN-BASED TIME TRIAL with TURN HOST, and an invite link carrying drive=ghost and turn=host" />
+  <figcaption>The ghost start card and room card: <b>DRIVE GHOST</b>, <b>TURN HOST</b> (host-only, pre-lock), and an invite link that carries both.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-ghost-lobby-overlay.png" alt="Handoff overlay reading DRIVER: GUEST above Seaside Route 765, one SHARED // Mappy · DRIVER: GUEST line, GO and HANDING OVER TO THE 2P CABINET" />
+  <figcaption>The handoff overlay in a ghost room: the kicker is the driver of this run (<code>DRIVER: GUEST</code>), and the car line repeats it.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-ghost-ridge-replay.png" alt="Ridge Racer 1994 replay screen from the 161-record staged tape: blue sky, road and a black car silhouette, with the GHOST chip reading HOST P1, RIDGE-GHST" />
+  <figcaption>Ridge Racer 1994: the native replay screen playing the staged 161-record tape. The chip reads <code>GHOST - HOST P1 - RIDGE-GHST</code>; the synthetic ramp leaves the car body off the recorded line, which a real lap would not.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-ghost-rage-replay.png" alt="Rage Racer replay screen with the REPLAY badge, city buildings, the car on the road and the HUD, from the swapped Time Attack tape" />
+  <figcaption>Rage Racer: scene 17 entered by the RACE frame's own finish branch, playing the rival's Time Attack tape — <code>REPLAY</code> badge, the game's camera and HUD.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-live-ghost-rage-off.png" alt="Rage Racer Grand Prix start with the live ghost disabled: RANK 11/12, a 9'56 time limit, the city skyline and the speedometer" />
+  <img src="/docs/img/lan/mp-live-ghost-rage-on.png" alt="The same Rage Racer Grand Prix start with the live ghost enabled: same camera and HUD, a different road frame with the tape pose drawn as a rival car" />
+  <figcaption><b>Route B, Rage Racer Grand Prix</b> — the same start with the live ghost <b>off</b> (top) and <b>on</b> (bottom). The tape pose is applied to <code>g_Cars[10]</code> and drawn by the game's own rival renderer; the player car, rank, time limit and HUD are unchanged.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-live-ghost-ridge-off.png" alt="Ridge Racer 1994 race screen with the live ghost disabled: chase view of the player car, TIME 40, POSITION 12/12, the chip reading RIDGE-…" />
+  <img src="/docs/img/lan/mp-live-ghost-ridge-on.png" alt="The same Ridge Racer 1994 race frame with the live ghost enabled: the same camera, the chip reading LIVE RIDGE - HOST P1, and the car body drawn from the tape slot" />
+  <figcaption><b>Route B, Ridge Racer 1994 race screen</b> — ghost <b>off</b> (top) and <b>on</b> (bottom). The A/B difference is localised to the car body in the chase view (an amplified diff of this pair is 30k subpixels, not a scene shift), and the chip gains the <code>LIVE RIDGE</code> prefix.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-live-ghost-a-replay.png" alt="Ridge Racer 1994 netplay page in a ghost room without mpLiveGhost: black replay canvas just after entering the replay door, chip reading GHOST - HOST P1 - RIDGE-GLDA and no LIVE row" />
+  <figcaption>The A-only regression in the same harness: with no <code>mpLiveGhost</code> there is no stub, no patch and no LIVE row, and the page still reaches its own replay door (screen 9). The canvas is still black in this capture — the shot is taken the moment the replay state opens.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-ghost-lobby-mobile.png" alt="Mobile 2P lounge at 390x844 showing the GHOST drive hint, the DRIVE LIVE/GHOST control and the top of the ghost room card reading DRIVE GHOST" />
+  <figcaption>390×844: the GHOST hint, the DRIVE control and the ghost room card stay inside the viewport (the harness also asserts the <b>TURN GUEST</b> room at this width with no horizontal overflow).</figcaption>
+</figure>
+
+Extra captures from the same runs: `_runtime/mp-ghost-ridge-replay-b.png` (the
+mirrored peer tape playing at the same screen), `_runtime/mp-ghost-rage-frozen-a.png`
+/ `-frozen-b.png` (the A/B pair on one frozen sample) and
+`_runtime/mp-ghost-lobby-rematch.png`. Route B's five crops are the
+`_runtime/mp-live-ghost-{rage,ridge}-{off,on}.png` pair and
+`_runtime/mp-live-ghost-a-replay.png` (copied to `docs/public/img/lan/`).
+
+## Related
+
+- [Shared car](/multiplayer/shared-car) — the simultaneous mode (both pads, one car)
+- [2P lounge & race handoff](/multiplayer/lounge) — rooms, DISC, plan, `mp*` parameters
+- [LAN multiplayer](/multiplayer/lan) — ports, firewall, one-subnet rules
+- [R4 2P LAN netplay](/multiplayer/r4-2p) — the two-car path
+- [REA evidence](/engineering/rea) — the PS-X EXE tooling limitation behind these addresses
+- [Rage Racer](/games/rage-racer) · [Ridge Racer 1994](/games/ridge-racer-1994) — the discs
+- [Performance and networking](/play/performance) — measured stream numbers

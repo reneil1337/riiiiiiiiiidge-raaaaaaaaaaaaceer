@@ -1,0 +1,490 @@
+/* 2P LAN netplay chrome for play-net.html. play.css supplies the shared
+   player shell; everything here is scoped to .netplay-page. */
+
+.netplay-page #play-bar { gap: 10px; }
+
+.netplay-page .btn-netplay[aria-expanded="false"] {
+  border-color: rgba(255, 255, 255, .18);
+  background: linear-gradient(180deg, #1a1c26, #101219);
+}
+
+.netplay-page #game { transition: width .22s ease; }
+
+/* N6a: guest stream sampling follows the real scale factor (set from
+   play-net.js on every resize). Only an exact integer upscale >= 2x keeps
+   nearest-neighbour; any fractional scale / downscale uses the browser filter. */
+.netplay-page #game.np-pixel canvas { image-rendering: pixelated; }
+.netplay-page #game.np-smooth canvas { image-rendering: auto; }
+
+/* N6b: the surface the host stream is painted into is never blurred. */
+.netplay-page #game,
+.netplay-page #play-stage { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+@media (min-width: 900px) {
+  body.np-open #game {
+    width: min(calc(100% - 380px), 960px, calc((100dvh - 132px) * 4 / 3));
+  }
+}
+
+/* ---- panel ---- */
+.np-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(352px, calc(100% - 24px));
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 60% at 100% 0%, rgba(225, 6, 0, .16), transparent 60%),
+    linear-gradient(180deg, rgba(17, 19, 28, .98), rgba(8, 9, 14, .98));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .72);
+  font-size: 12px;
+  line-height: 1.45;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3f4e transparent;
+}
+
+.np-panel[hidden] { display: none; }
+
+.np-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.np-kicker {
+  font-size: 9px;
+  letter-spacing: .3em;
+  color: var(--rr-red);
+  font-weight: 700;
+}
+
+.np-head h2 {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-style: italic;
+  letter-spacing: .08em;
+  font-weight: 900;
+}
+
+.np-close,
+.np-mini {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #14161f;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.np-close { width: 26px; height: 26px; padding: 0; font-size: 12px; }
+.np-mini { padding: 4px 8px; }
+.np-close:hover,
+.np-mini:hover { color: #fff; border-color: var(--rr-red); }
+
+.np-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.np-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  white-space: nowrap;
+}
+.np-pill[data-state="ok"] { color: #6ef2a2; border-color: rgba(110, 242, 162, .4); }
+.np-pill[data-state="warn"] { color: #ffd166; border-color: rgba(255, 209, 102, .4); }
+.np-pill[data-state="error"] { color: #ff8b86; border-color: rgba(255, 139, 134, .45); }
+.np-pill[data-state="host"] { color: #ffd166; border-color: rgba(255, 209, 102, .45); }
+.np-pill[data-state="guest"] { color: #8fd3ff; border-color: rgba(143, 211, 255, .45); }
+
+/* ---- stream quality selector (N5) ---- */
+.np-quality {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: .16em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.np-quality select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 72%;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #0e1018;
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: .03em;
+}
+.np-quality select:focus-visible { outline: 2px solid var(--rr-red); outline-offset: 1px; }
+
+.np-server {
+  padding: 6px 8px;
+  border: 1px dashed rgba(255, 255, 255, .14);
+  border-radius: 6px;
+  color: var(--muted);
+  font: 10px/1.4 ui-monospace, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.np-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 9px;
+  letter-spacing: .16em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.np-field input,
+.np-field select {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #0e1018;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: .03em;
+}
+.np-field input:focus-visible,
+.np-field select:focus-visible { outline: 2px solid var(--rr-red); outline-offset: 1px; }
+
+.np-flow {
+  padding: 8px 9px;
+  border-left: 2px solid var(--rr-red);
+  background: rgba(225, 6, 0, .06);
+  border-radius: 0 6px 6px 0;
+}
+.np-flow p { margin: 0 0 6px; color: #c7ccd8; font-size: 11px; }
+.np-flow p:last-child { margin-bottom: 0; }
+.np-flow b { color: #fff; letter-spacing: .06em; }
+.np-flow .np-note { color: var(--muted); font-size: 10px; }
+.np-flow code { color: #8fd3ff; font: 10px/1.4 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+
+.np-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.np-block h3 {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: #fff;
+}
+
+.np-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.np-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.np-field-small { width: 74px; flex: 0 0 auto; }
+
+.np-action {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #1a1c26, #101219);
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.np-action:hover:not(:disabled) { border-color: var(--rr-red); background: linear-gradient(180deg, #241016, #150a0d); }
+.np-action:disabled { opacity: .38; cursor: default; }
+.np-action-primary {
+  border-color: rgba(225, 6, 0, .6);
+  background: linear-gradient(180deg, #b00500, #7a0300);
+}
+.np-action-primary:hover:not(:disabled) { background: linear-gradient(180deg, #d40700, #8f0400); }
+
+.np-actions { display: flex; gap: 7px; }
+
+/* ---- ghost (Route A: turn-based Time Trial, host-owned tape) ---- */
+.np-ghost {
+  border-top-color: rgba(233, 196, 51, .45);
+}
+.np-ghost[hidden] { display: none; }
+.np-ghost-tag {
+  color: #e9c433;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.np-ghost-status {
+  padding: 7px 8px;
+  border: 1px solid rgba(233, 196, 51, .35);
+  border-radius: 6px;
+  background: rgba(233, 196, 51, .08);
+  color: #f3df8f;
+  font: 10px/1.4 ui-monospace, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+.np-ghost-status[data-state="replayed"] { border-color: rgba(120, 255, 160, .45); color: #a8ffc4; }
+.np-ghost-status[data-state="ready"] { border-color: rgba(120, 255, 160, .45); color: #a8ffc4; }
+.np-ghost-status[data-state="live"] {
+  border-color: rgba(120, 200, 255, .55);
+  background: rgba(120, 200, 255, .1);
+  color: #bfe4ff;
+}
+.np-ghost-status[data-state="unverified"] { border-color: rgba(233, 196, 51, .45); color: #f3df8f; }
+.np-ghost-status[data-state="mismatch"],
+.np-ghost-status[data-state="error"] { border-color: rgba(255, 90, 82, .5); color: #ff9c96; }
+.np-ghost-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+/* ---- ghost (Route B: live ghost car, `?mpLiveGhost=1`) ---- */
+.np-ghost-live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  border: 1px solid rgba(120, 200, 255, .3);
+  border-radius: 6px;
+  background: rgba(120, 200, 255, .06);
+}
+.np-ghost-live[hidden] { display: none; }
+.np-ghost-live-tag {
+  color: #9fd4ff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.np-ghost-live-meta {
+  min-width: 0;
+  color: var(--muted);
+  font: 9px/1.4 ui-monospace, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+#npGhostLiveBtn[data-state="on"] { border-color: rgba(120, 200, 255, .55); color: #bfe4ff; }
+#npGhostLiveBtn[data-state="off"] { border-color: rgba(233, 196, 51, .35); color: #f3df8f; }
+.np-ghost-note { margin: 0; color: #c7ccd8; font-size: 10px; line-height: 1.5; }
+.np-ghost-storage {
+  color: var(--muted);
+  font: 9px/1.4 ui-monospace, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.np-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 34px;
+}
+
+.np-empty {
+  padding: 9px;
+  border: 1px dashed rgba(255, 255, 255, .14);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.np-room {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0e1018;
+}
+.np-room-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.np-room-count { color: var(--muted); font-size: 10px; }
+.np-room-join {
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--rr-red);
+  color: #fff;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.np-room-join:hover { background: #ff1a12; }
+
+.np-log {
+  min-height: 34px;
+  max-height: 96px;
+  padding: 7px 8px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #080910;
+  color: #9fb0c9;
+  font: 10px/1.5 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.np-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.np-foot b { color: #cfd3dd; }
+
+/* ---- collapsed status chip + rematch ---- */
+.np-chips {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 9;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 28px);
+}
+.np-chips .np-chip {
+  position: static;
+  right: auto;
+  bottom: auto;
+}
+.np-chip {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 9;
+  display: inline-flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 999px;
+  background: rgba(10, 11, 16, .82);
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.np-chip[hidden] { display: none; }
+.np-chip:hover { border-color: var(--rr-red); }
+/* The status text carries seat + room + host stage; keep it on one line and
+   ellipsise on narrow screens instead of growing past the stage edge. */
+#npChipText {
+  max-width: min(70vw, 420px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.np-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow: 0 0 10px rgba(255, 209, 102, .8);
+}
+/* Debug line: input transport counters + the last 2 s getStats sample. */
+.np-chip-debug {
+  flex: 1 1 100%;
+  order: 9;
+  color: #9fb0c9;
+  font: 8px/1.2 ui-monospace, Consolas, monospace;
+  letter-spacing: .03em;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-chip-debug[hidden] { display: none; }
+.np-chip[data-state="host"] .np-chip-dot { background: #ffd166; }
+.np-chip[data-state="guest"] .np-chip-dot { background: #8fd3ff; box-shadow: 0 0 10px rgba(143, 211, 255, .8); }
+.np-chip[data-state="ok"] .np-chip-dot { background: #6ef2a2; box-shadow: 0 0 10px rgba(110, 242, 162, .8); }
+.np-chip[data-state="error"] .np-chip-dot { background: #ff5a52; box-shadow: 0 0 10px rgba(255, 90, 82, .8); }
+
+/* Fullscreen hides the panel unless it is explicitly open. The chip remains
+   available so the player can check or leave the room. */
+body.fs #play-bar,
+body.fs #play-foot { display: none; }
+
+@media (max-width: 899px) {
+  .np-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    top: 12px;
+    bottom: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .netplay-page #play-bar .btn-ghost { display: none; }
+  .np-panel { padding: 12px; font-size: 11px; }
+  .np-head h2 { font-size: 17px; }
+}
+
+@media (max-width: 520px) {
+  .netplay-page #play-bar .btn-netplay { padding: 6px 8px; font-size: 8px; }
+  .np-panel { top: 8px; right: 8px; bottom: 8px; left: 8px; padding: 10px; }
+  .np-flow p { font-size: 10px; }
+}

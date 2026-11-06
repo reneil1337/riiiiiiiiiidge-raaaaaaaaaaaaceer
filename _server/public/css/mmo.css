@@ -1,0 +1,1208 @@
+/* Race Day — 50-driver MMO lobby (/race-day).
+   Static shell only: mmo-ui.js / mmo-lfg.js own every live value.
+   Visual language follows css/multiplayer.css (dark cabinet, #e10600 accent,
+   condensed uppercase labels, team colours from the welcome paddock). */
+
+:root {
+  --mmo-bg: #07080c;
+  --mmo-panel: #0c0e15;
+  --mmo-panel-2: #14161f;
+  --mmo-sunken: #0a0c12;
+  --mmo-text: #f2f3f7;
+  --mmo-muted: #9aa0ae;
+  --mmo-dim: #6f7684;
+  --mmo-line: rgba(255, 255, 255, .12);
+  --mmo-line-soft: rgba(255, 255, 255, .06);
+  --mmo-accent: #e10600;
+  --mmo-accent-2: #29d3ff;
+  --mmo-yellow: #ffd166;
+  --mmo-ok: #6ef2a2;
+  --mmo-sol: #7fa8ff;
+  --mmo-pac: #ff6b5a;
+  --mmo-map: #ff8fb3;
+  --mmo-dig: #2dd4e8;
+  --mmo-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --mmo-display: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--mmo-bg);
+  color: var(--mmo-text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Column layout so the standalone chrome (skip link + top bar) sits outside the
+   app's 1fr row and the 900px viewport never grows a page scrollbar. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-image:
+    linear-gradient(115deg, rgba(225, 6, 0, .04) 0 2px, transparent 2px 100%),
+    radial-gradient(900px 500px at 86% -10%, rgba(41, 211, 255, .08), transparent 60%),
+    radial-gradient(820px 480px at 0% 0%, rgba(225, 6, 0, .07), transparent 55%);
+  background-size: 48px 48px, 100% 100%, 100% 100%;
+}
+
+@media (min-width: 1025px) {
+  body { height: 100vh; }
+}
+
+/* ---------------------------------------------------------------- a11y ---- */
+
+.mmo-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mmo-skip {
+  position: relative;
+  z-index: 5;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0 10px;
+  padding: 4px 8px;
+  border: 1px solid var(--mmo-line);
+  background: var(--mmo-panel);
+  color: var(--mmo-accent-2);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.mmo-skip:hover { border-color: var(--mmo-accent-2); color: #fff; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible,
+#mmoGrid:focus-visible {
+  outline: 2px solid var(--mmo-accent-2);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------- top bar ---- */
+
+.mmo-topbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 4px 10px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--mmo-line);
+  background: var(--mmo-panel);
+}
+
+.mmo-topbar-back {
+  color: var(--mmo-accent-2);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.mmo-topbar-back:hover { color: #fff; }
+
+.mmo-topbar-title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mmo-topbar-title b { color: #fff; }
+
+.mmo-topbar-nav {
+  display: flex;
+  gap: 12px;
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+}
+
+.mmo-topbar-nav a { color: var(--mmo-muted); text-decoration: none; }
+.mmo-topbar-nav a:hover { color: var(--mmo-accent); }
+
+/* ----------------------------------------------------------- boot strip --- */
+
+/* Outside #mmoApp on purpose: the app is a fixed 3-row grid, so a status line
+   inside it would reflow the grid every time it hides. */
+.mmo-boot {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  width: calc(100% - 2 * clamp(10px, 1.6vw, 20px));
+  max-width: 1560px;
+  margin: 6px auto 0;
+  padding: 5px 9px;
+  border: 1px solid rgba(41, 211, 255, .35);
+  background: rgba(41, 211, 255, .06);
+  color: var(--mmo-accent-2);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.mmo-boot-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: mmo-blink 1.4s steps(2, end) infinite;
+}
+
+.mmo-boot[data-boot="error"] {
+  border-color: rgba(225, 6, 0, .6);
+  background: rgba(225, 6, 0, .1);
+  color: #ffb4a8;
+}
+
+.mmo-boot[data-boot="error"] .mmo-boot-dot { animation: none; background: var(--mmo-accent); }
+
+/* ----------------------------------------------------------- app frame ---- */
+
+.mmo-app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1560px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 10px clamp(10px, 1.6vw, 20px) 12px;
+}
+
+html[data-embedded="1"] .mmo-app,
+body[data-embedded="1"] .mmo-app { padding-top: 6px; }
+
+.mmo-noscript { margin: 0 0 6px; color: var(--mmo-yellow); font-family: var(--mmo-mono); font-size: 9px; line-height: 1.45; }
+.mmo-noscript code { color: #fff; }
+
+/* -------------------------------------------------------- event header ---- */
+
+.mmo-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 7px 12px;
+  border: 1px solid var(--mmo-line);
+  border-left: 3px solid var(--mmo-accent);
+  background: linear-gradient(100deg, #0f1119, #0a0c12);
+}
+
+.mmo-event-id { min-width: 0; }
+
+.mmo-event-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: clamp(15px, 1.5vw, 19px);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.mmo-event-num { color: var(--mmo-yellow); letter-spacing: .08em; }
+
+.mmo-event-sub {
+  margin: 4px 0 0;
+  color: var(--mmo-dim);
+  font-family: var(--mmo-mono);
+  font-size: 7px;
+  letter-spacing: .18em;
+}
+
+.mmo-event-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  margin-left: auto;
+}
+
+.mmo-stat { display: flex; flex-direction: column; gap: 2px; }
+.mmo-stat dt { color: var(--mmo-dim); font-family: var(--mmo-mono); font-size: 7px; letter-spacing: .16em; }
+.mmo-stat dd { margin: 0; }
+.mmo-stat b {
+  display: block;
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mmo-num { font-variant-numeric: tabular-nums; }
+
+.mmo-event-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+
+/* ?party=ABCD — the boot script fills the code; mmo-lfg.js owns the real party
+   box inside the LFG panel. This chip only explains why the page was opened. */
+.mmo-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 209, 102, .55);
+  border-radius: 2px;
+  background: rgba(255, 209, 102, .1);
+  color: var(--mmo-yellow);
+  font-family: var(--mmo-mono);
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mmo-invite b { color: #fff; letter-spacing: .18em; }
+
+.mmo-pill {
+  padding: 3px 7px;
+  border: 1px solid var(--mmo-line);
+  border-radius: 2px;
+  background: var(--mmo-panel-2);
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.mmo-pill[data-state="lobby"] { border-color: rgba(154, 160, 174, .5); color: var(--mmo-muted); }
+.mmo-pill[data-state="grid"] { border-color: var(--mmo-accent-2); color: var(--mmo-accent-2); }
+.mmo-pill[data-state="countdown"] { border-color: var(--mmo-yellow); color: var(--mmo-yellow); }
+.mmo-pill[data-state="racing"] { border-color: var(--mmo-ok); color: var(--mmo-ok); }
+.mmo-pill[data-state="results"] { border-color: var(--mmo-accent); color: #fff; background: var(--mmo-accent); }
+
+.mmo-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 7.5px;
+  letter-spacing: .16em;
+  white-space: nowrap;
+}
+
+/* mmo-client.js paints data-conn="linking|online|slow|offline" and mirrors the
+   raw socket state in data-link. The <i> dot is the no-JS skeleton only, so it
+   is hidden as soon as the client owns the chip (no second dot). */
+.mmo-conn i {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mmo-dim);
+}
+
+.mmo-conn[data-conn] i { display: none; }
+
+.mmo-conn[data-conn]::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mmo-conn[data-conn="online"],
+.mmo-conn[data-conn="open"] { color: var(--mmo-ok); }
+.mmo-conn[data-conn="linking"],
+.mmo-conn[data-conn="slow"],
+.mmo-conn[data-conn="connecting"],
+.mmo-conn[data-conn="reconnecting"] { color: var(--mmo-yellow); }
+.mmo-conn[data-conn="linking"]::before,
+.mmo-conn[data-conn="slow"]::before,
+.mmo-conn[data-conn="connecting"]::before,
+.mmo-conn[data-conn="reconnecting"]::before { animation: mmo-blink 1.4s steps(2, end) infinite; }
+.mmo-conn[data-conn="offline"],
+.mmo-conn[data-conn="closed"] { color: var(--mmo-accent); }
+
+.mmo-qbadge {
+  padding: 3px 6px;
+  border: 1px solid var(--mmo-line-soft);
+  color: var(--mmo-dim);
+  font-family: var(--mmo-mono);
+  font-size: 7px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ 3 columns --- */
+
+.mmo-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, .95fr);
+  grid-template-areas: "grid lfg standings";
+  gap: 8px;
+  min-height: 0;
+}
+
+.mmo-col--grid { grid-area: grid; }
+.mmo-col--lfg { grid-area: lfg; }
+.mmo-col--standings { grid-area: standings; }
+
+.mmo-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--mmo-line);
+  background: var(--mmo-panel);
+}
+
+.mmo-panelhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--mmo-line);
+  background: var(--mmo-sunken);
+}
+
+.mmo-panelhead h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mmo-panelnote { color: var(--mmo-dim); font-family: var(--mmo-mono); font-size: 7px; font-weight: 400; letter-spacing: .16em; }
+
+/* ------------------------------------------------------------ the grid ---- */
+
+.mmo-filters { display: flex; flex-wrap: wrap; gap: 3px; }
+
+.mmo-chip {
+  padding: 2px 6px;
+  border: 1px solid var(--mmo-line-soft);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--mmo-dim);
+  font-family: var(--mmo-mono);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  cursor: pointer;
+}
+
+.mmo-chip:hover { border-color: var(--mmo-accent-2); color: var(--mmo-accent-2); }
+.mmo-chip.is-on,
+.mmo-chip[aria-pressed="true"] { border-color: var(--mmo-accent); background: rgba(225, 6, 0, .16); color: #fff; }
+
+#mmoGrid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 4px;
+  padding: 8px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.mmo-slot {
+  --slot: var(--mmo-dim);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--mmo-line);
+  border-left: 3px solid var(--slot);
+  background: #101219;
+  font-family: var(--mmo-mono);
+}
+
+.mmo-slot[data-team="sol"] { --slot: var(--mmo-sol); }
+.mmo-slot[data-team="pac"] { --slot: var(--mmo-pac); }
+.mmo-slot[data-team="map"] { --slot: var(--mmo-map); }
+.mmo-slot[data-team="dig"] { --slot: var(--mmo-dig); }
+
+.mmo-slot-avatar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--mmo-line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--slot);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.mmo-slot-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mmo-slot-name {
+  overflow: hidden;
+  color: #eef1f7;
+  font-family: var(--mmo-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mmo-slot-meta {
+  overflow: hidden;
+  color: #8b93a2;
+  font-size: 7px;
+  letter-spacing: .14em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* slot states — the ui module only flips data-state / data-team */
+.mmo-slot[data-state="empty"] {
+  border-style: dashed;
+  border-left-style: solid;
+  background: #0b0d13;
+}
+
+.mmo-slot[data-state="empty"] .mmo-slot-avatar { opacity: .55; }
+.mmo-slot[data-state="empty"] .mmo-slot-name { color: #8d94a2; }
+.mmo-slot[data-state="empty"] .mmo-slot-meta { color: #5d6472; }
+
+.mmo-slot[data-state="queued"] {
+  border-color: rgba(41, 211, 255, .55);
+  background: #0f1620;
+  animation: mmo-pulse 1.6s ease-in-out infinite;
+}
+
+.mmo-slot[data-state="seated"] { background: var(--mmo-panel-2); }
+.mmo-slot[data-state="seated"] .mmo-slot-avatar { border-color: var(--slot); }
+
+.mmo-slot[data-state="you"] {
+  border-color: var(--mmo-accent);
+  background: linear-gradient(100deg, rgba(225, 6, 0, .22), #14161f 70%);
+  box-shadow: inset 0 0 0 1px rgba(225, 6, 0, .35);
+}
+
+.mmo-slot[data-state="you"] .mmo-slot-name { color: #fff; }
+
+.mmo-slot[data-state="bot"] {
+  border-style: dotted;
+  border-left-style: solid;
+}
+
+.mmo-slot[data-state="bot"] .mmo-slot-name { color: #dfe5ef; }
+
+.mmo-slot[data-state="offline"] { opacity: .45; filter: grayscale(.5); }
+
+.mmo-slot[data-state="finished"] { border-color: rgba(110, 242, 162, .5); }
+.mmo-slot[data-state="finished"] .mmo-slot-meta { color: var(--mmo-ok); }
+
+.mmo-slot[data-state="you"]::after,
+.mmo-slot[data-state="bot"]::after,
+.mmo-slot[data-state="finished"]::after {
+  margin-left: auto;
+  padding: 1px 3px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 6.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mmo-slot[data-state="you"]::after { content: "YOU"; border-color: var(--mmo-accent); background: var(--mmo-accent); color: #fff; }
+.mmo-slot[data-state="bot"]::after { content: "BOT"; color: var(--mmo-yellow); }
+.mmo-slot[data-state="finished"]::after { content: "✓"; color: var(--mmo-ok); }
+
+/* ----------------------------------------------------------------- LFG ---- */
+
+.mmo-lfg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px;
+}
+
+.mmo-field { display: flex; flex-direction: column; gap: 4px; }
+
+.mmo-field span {
+  color: var(--mmo-dim);
+  font-family: var(--mmo-mono);
+  font-size: 7px;
+  letter-spacing: .18em;
+}
+
+.mmo-field input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--mmo-line);
+  border-radius: 3px;
+  background: var(--mmo-panel-2);
+  color: var(--mmo-text);
+  font-family: var(--mmo-display);
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mmo-field input::placeholder { color: var(--mmo-dim); }
+.mmo-field input:focus-visible { border-color: var(--mmo-accent-2); }
+
+.mmo-btn {
+  padding: 7px 10px;
+  border: 1px solid var(--mmo-line);
+  border-radius: 3px;
+  background: var(--mmo-panel-2);
+  color: var(--mmo-text);
+  font-family: var(--mmo-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.mmo-btn:hover { border-color: var(--mmo-accent); color: #fff; }
+
+.mmo-btn--primary {
+  border-color: var(--mmo-accent);
+  background: linear-gradient(110deg, #a50400, #e10600);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: .16em;
+}
+
+.mmo-btn--primary:hover { background: linear-gradient(110deg, #bd0500, #ff1a12); color: #fff; }
+
+.mmo-btn--tiny { padding: 4px 7px; font-size: 7px; }
+
+.mmo-btn:disabled,
+.mmo-btn[aria-disabled="true"] {
+  border-color: var(--mmo-line-soft);
+  background: #0f1118;
+  color: var(--mmo-dim);
+  cursor: not-allowed;
+}
+
+.mmo-btn[aria-pressed="true"] {
+  border-color: var(--mmo-accent-2);
+  background: rgba(41, 211, 255, .1);
+  color: #d9f6ff;
+}
+
+.mmo-lfg-btn { padding: 12px 12px; }
+
+.mmo-lfg-queue {
+  margin: 0;
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mmo-fill { display: flex; flex-direction: column; gap: 4px; }
+
+.mmo-fill-track {
+  position: relative;
+  height: 8px;
+  border: 1px solid var(--mmo-line);
+  background: #0b0d13;
+  overflow: hidden;
+}
+
+.mmo-fill-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: linear-gradient(90deg, #a50400, var(--mmo-accent) 60%, #ff7a5f);
+  transition: width .3s ease-out;
+}
+
+.mmo-fill-text {
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.mmo-lfg-eta {
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--mmo-line-soft);
+  color: var(--mmo-dim);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.mmo-lfg-eta b { color: var(--mmo-yellow); font-size: 11px; letter-spacing: .06em; }
+
+.mmo-lfg-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.mmo-lfg-actions .mmo-btn { flex: 1 1 auto; }
+
+.mmo-party {
+  padding: 7px 8px;
+  border: 1px solid var(--mmo-line-soft);
+  background: var(--mmo-sunken);
+}
+
+.mmo-party-label {
+  margin: 0 0 5px;
+  color: var(--mmo-dim);
+  font-family: var(--mmo-mono);
+  font-size: 7px;
+  letter-spacing: .18em;
+}
+
+.mmo-party-row { display: flex; align-items: center; gap: 6px; }
+
+.mmo-party-row code {
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--mmo-yellow);
+  font-family: var(--mmo-display);
+  font-size: 20px;
+  font-style: italic;
+  letter-spacing: .16em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mmo-party-hint { margin: 5px 0 0; color: var(--mmo-dim); font-size: 9px; line-height: 1.3; }
+
+/* seat strip */
+.mmo-seat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding: 7px 9px;
+  border-top: 1px solid var(--mmo-line);
+  background: #12141d;
+  font-family: var(--mmo-mono);
+  font-size: 7.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mmo-seat-label { color: var(--mmo-dim); }
+
+.mmo-seat-val {
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: .1em;
+}
+
+.mmo-team-pill {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: var(--mmo-dim);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  white-space: nowrap;
+}
+
+.mmo-team-pill[data-team="sol"] { color: var(--mmo-sol); }
+.mmo-team-pill[data-team="pac"] { color: var(--mmo-pac); }
+.mmo-team-pill[data-team="map"] { color: var(--mmo-map); }
+.mmo-team-pill[data-team="dig"] { color: var(--mmo-dig); }
+
+/* your-row / .mmo-you accent mark (no pseudo, so slots keep their team edge) */
+.mmo-you { box-shadow: inset 2px 0 0 var(--mmo-accent); }
+
+/* ----------------------------------------------------------- standings ---- */
+
+.mmo-tablewrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.mmo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mmo-mono);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mmo-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--mmo-line);
+  background: var(--mmo-sunken);
+  color: var(--mmo-muted);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.mmo-table td {
+  overflow: hidden;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--mmo-line-soft);
+  color: #dbe1ec;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mmo-table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, .018); }
+.mmo-table tbody tr:hover td { background: rgba(41, 211, 255, .07); }
+
+.mmo-c-pos { width: 34px; }
+.mmo-c-team { width: 54px; }
+.mmo-c-num { width: 74px; text-align: right; }
+
+.mmo-row-note td {
+  color: var(--mmo-dim);
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: normal;
+}
+
+.mmo-your-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-top: 1px solid rgba(225, 6, 0, .5);
+  background: linear-gradient(100deg, rgba(225, 6, 0, .16), #12141d 65%);
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mmo-your-pos {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  padding: 2px 4px;
+  background: var(--mmo-accent);
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: .04em;
+}
+
+.mmo-your-name {
+  margin-right: auto;
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 11px;
+  letter-spacing: .12em;
+}
+
+.mmo-your-team { color: var(--mmo-muted); }
+.mmo-your-num { color: var(--mmo-muted); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- feed ---- */
+
+.mmo-feedwrap {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 10px;
+  border: 1px solid var(--mmo-line);
+  background: var(--mmo-sunken);
+  overflow: hidden;
+}
+
+.mmo-feed-title {
+  margin: 0;
+  color: var(--mmo-accent-2);
+  font-family: var(--mmo-display);
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.mmo-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mmo-feed-line {
+  overflow: hidden;
+  color: #c6cdda;
+  font-family: var(--mmo-mono);
+  font-size: 9px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mmo-feed-line[data-placeholder="1"] { color: #7d8492; }
+
+.mmo-feed-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 3px;
+  border: 1px solid var(--mmo-line);
+  color: var(--mmo-yellow);
+  font-size: 6.5px;
+  letter-spacing: .14em;
+}
+
+/* ----------------------------------------------------------- countdown ---- */
+
+.mmo-countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: rgba(5, 7, 15, .92);
+  text-align: center;
+}
+
+.mmo-countdown-n {
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: clamp(96px, 20vw, 220px);
+  font-style: italic;
+  font-weight: 800;
+  line-height: .84;
+  text-shadow: 0 0 60px rgba(225, 6, 0, .65);
+  font-variant-numeric: tabular-nums;
+}
+
+.mmo-countdown-label {
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 9px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- results ---- */
+
+.mmo-results {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  padding: 14px;
+  overflow: auto;
+  background: rgba(5, 7, 15, .94);
+}
+
+.mmo-results-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(980px, 100%);
+  min-height: 0;
+  max-height: calc(100vh - 28px);
+  margin: auto;
+  border: 1px solid var(--mmo-accent);
+  background: var(--mmo-panel);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+}
+
+.mmo-results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mmo-line);
+}
+
+.mmo-kicker {
+  margin: 0 0 3px;
+  color: var(--mmo-accent-2);
+  font-family: var(--mmo-mono);
+  font-size: 7px;
+  letter-spacing: .22em;
+}
+
+.mmo-results-head h2 {
+  margin: 0;
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 22px;
+  font-style: italic;
+  letter-spacing: .04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.mmo-nextrace {
+  margin: 0;
+  margin-left: auto;
+  color: var(--mmo-muted);
+  font-family: var(--mmo-mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mmo-nextrace b { color: var(--mmo-yellow); font-size: 12px; }
+
+.mmo-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mmo-line);
+}
+
+.mmo-podium-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--mmo-line);
+  border-top: 3px solid var(--podium, var(--mmo-line));
+  background: var(--mmo-sunken);
+  min-width: 0;
+}
+
+.mmo-podium-slot[data-place="1"] { --podium: var(--mmo-yellow); }
+.mmo-podium-slot[data-place="2"] { --podium: #c9d2e0; }
+.mmo-podium-slot[data-place="3"] { --podium: #d08a5a; }
+
+.mmo-podium-pos {
+  color: var(--podium, var(--mmo-muted));
+  font-family: var(--mmo-display);
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: .14em;
+}
+
+.mmo-podium-name {
+  overflow: hidden;
+  color: #fff;
+  font-family: var(--mmo-display);
+  font-size: 14px;
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mmo-podium-meta { color: var(--mmo-dim); font-family: var(--mmo-mono); font-size: 7px; font-style: normal; letter-spacing: .16em; }
+
+.mmo-tablewrap--results { max-height: 46vh; }
+
+/* --------------------------------------------------------------- motion --- */
+
+@keyframes mmo-pulse {
+  0%, 100% { border-color: rgba(41, 211, 255, .3); }
+  50% { border-color: rgba(41, 211, 255, .85); }
+}
+
+@keyframes mmo-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------- mobile --- */
+
+@media (max-width: 1024px) {
+  .mmo-app { height: auto; }
+  .mmo-main { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "grid lfg" "standings standings"; }
+  #mmoGrid { max-height: 48vh; }
+}
+
+@media (max-width: 760px) {
+  .mmo-app { grid-template-rows: auto auto auto auto; height: auto; min-height: 100vh; padding: 8px 10px 10px; }
+  .mmo-main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "lfg" "standings" "grid";
+  }
+  .mmo-topbar { margin: 4px 8px 0; }
+  .mmo-event { gap: 6px 12px; padding: 7px 9px; }
+  .mmo-event-stats { gap: 4px 12px; margin-left: 0; width: 100%; }
+  .mmo-event-status { margin-left: 0; }
+  .mmo-stat b { font-size: 12px; }
+  #mmoGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    max-height: none;
+    overflow: visible;
+    gap: 3px;
+    padding: 6px;
+  }
+  .mmo-slot {
+    flex-direction: column;
+    gap: 0;
+    padding: 3px 2px;
+    border-left-width: 2px;
+  }
+  .mmo-slot-body { display: none; }
+  .mmo-slot-avatar {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    border: 0;
+    background: transparent;
+    font-size: 9px;
+  }
+  .mmo-slot::after { display: none; }
+  .mmo-tablewrap { max-height: 42vh; }
+  .mmo-table { font-size: 9px; }
+  .mmo-table th:nth-child(3),
+  .mmo-table td:nth-child(3) { display: none; }
+  .mmo-your-row { flex-wrap: wrap; gap: 5px 7px; }
+  .mmo-feedwrap { flex-direction: column; align-items: stretch; gap: 3px; }
+  .mmo-feed-line { white-space: normal; }
+  .mmo-results { padding: 8px; }
+  .mmo-results-panel { max-height: calc(100vh - 16px); }
+  .mmo-results-head h2 { font-size: 18px; }
+  .mmo-nextrace { margin-left: 0; }
+  .mmo-podium { grid-template-columns: minmax(0, 1fr); padding: 8px; }
+  .mmo-tablewrap--results { max-height: 40vh; }
+  .mmo-lfg-actions .mmo-btn { flex: 1 1 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mmo-slot[data-state="queued"] { animation: none !important; border-color: rgba(41, 211, 255, .55); }
+  .mmo-conn i { animation: none !important; }
+  .mmo-boot-dot { animation: none !important; }
+}
+
+/* ------------------------------------------------------------- spectate ---- */
+
+/* ?spectate=1 shell side. mmo-spectate.js injects the same hiding rules for
+   body[data-mmo-spectate="1"], but that attribute only lands after the module
+   mounts — this block is what stops the LFG aside / standings / results /
+   countdown from flashing in the meantime. The boot script sets the mode
+   before the deferred modules run. */
+body[data-mode="spectate"] #mmoLfg,
+body[data-mode="spectate"] #mmoStandings,
+body[data-mode="spectate"] #mmoResults,
+body[data-mode="spectate"] #mmoCountdown { display: none !important; }
+
+body[data-mode="spectate"] .mmo-main {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-areas: "grid standings";
+}
+
+@media (max-width: 1024px) {
+  body[data-mode="spectate"] .mmo-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "grid standings";
+  }
+}
+
+@media (max-width: 760px) {
+  body[data-mode="spectate"] .mmo-main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "standings" "grid";
+  }
+  .mmo-boot { border-left-width: 3px; font-size: 7.5px; letter-spacing: .12em; }
+}

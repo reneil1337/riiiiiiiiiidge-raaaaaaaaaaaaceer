@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#07080c" />
+  <title>Ridge Racer Type 4 // Race Day — 50 Drivers</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/mmo.css" />
+  <link rel="stylesheet" href="/css/mmo-lfg.css" />
+  <link rel="stylesheet" href="/css/mmo-a11y.css" />
+</head>
+<body data-mode="driver">
+  <a class="mmo-skip" href="#mmoMain">SKIP TO RACE DAY</a>
+
+  <!-- Standalone top bar. Hidden in markup, revealed by the boot script only when
+       the page is NOT embedded (?embedded=1); the shell owns the one top bar. -->
+  <header class="mmo-topbar" id="mmoTopbar" hidden>
+    <a class="mmo-topbar-back" href="/welcome">← PADDOCK</a>
+    <p class="mmo-topbar-title">RIDGE CITY // <b>RACE DAY</b></p>
+    <nav class="mmo-topbar-nav" aria-label="Cabinet">
+      <a href="/multiplayer">2P LOUNGE</a>
+      <a href="/play?game=r4">PLAY</a>
+      <a href="/docs/introduction">MANUAL</a>
+    </nav>
+  </header>
+
+  <!-- Boot strip: shown until the /mmo socket reports online (8 s ceiling), and
+       the permanent home of the "client did not load" message. It sits outside
+       #mmoApp so the three grid rows below never reflow around it. -->
+  <div class="mmo-boot" id="mmoBoot" role="status" aria-live="polite" hidden>
+    <span class="mmo-boot-dot" aria-hidden="true"></span>
+    <span id="mmoBootNote" data-mmo-boot-note>LINKING TO RACE DAY…</span>
+  </div>
+
+  <div id="mmoApp" class="mmo-app">
+    <noscript>
+      <p class="mmo-noscript">RACE DAY NEEDS JAVASCRIPT: the seat grid below is static — live standings, the LFG queue and the 3-2-1 countdown come from the <code>/mmo</code> socket.</p>
+    </noscript>
+
+    <header class="mmo-event" id="mmoEvent" aria-labelledby="mmoEventTitle">
+      <div class="mmo-event-id">
+        <h1 class="mmo-event-title" id="mmoEventTitle">RACE DAY <span class="mmo-event-num" data-mmo-event-num>#12</span></h1>
+        <p class="mmo-event-sub">50 DRIVERS · ONE RACE · ONE CLOCK</p>
+      </div>
+      <dl class="mmo-event-stats">
+        <div class="mmo-stat">
+          <dt>ON THE GRID</dt>
+          <dd><b id="mmoGridCount">0 / 50</b></dd>
+        </div>
+        <div class="mmo-stat">
+          <dt>TRACK</dt>
+          <dd><b data-mmo-track>TBC</b></dd>
+        </div>
+        <div class="mmo-stat">
+          <dt>CLOCK</dt>
+          <dd><b class="mmo-num" data-mmo-clock>00:00</b></dd>
+        </div>
+      </dl>
+      <div class="mmo-event-status">
+        <p id="mmoPartyInvite" class="mmo-invite" hidden>INVITED · <b id="mmoPartyInviteCode">----</b></p>
+        <span id="mmoState" class="mmo-pill" data-state="lobby">LOBBY</span>
+        <span id="mmoConn" class="mmo-conn"><i aria-hidden="true"></i>LINKING</span>
+        <span id="mmoQualityBadge" class="mmo-qbadge">NET AUTO</span>
+      </div>
+    </header>
+
+    <!-- DOM order is LFG → grid → standings (keyboard contract). The desktop
+         three-column layout is placed with grid-template-areas, not by source. -->
+    <main class="mmo-main" id="mmoMain">
+      <aside id="mmoLfg" class="mmo-panel mmo-col--lfg" aria-labelledby="mmoLfgTitle">
+        <div class="mmo-panelhead">
+          <h2 id="mmoLfgTitle">LFG</h2>
+          <span class="mmo-panelnote">LOOKING FOR GROUP</span>
+        </div>
+        <div class="mmo-lfg-body">
+          <label class="mmo-field" for="mmoName">
+            <span>CALLSIGN</span>
+            <input id="mmoName" name="driver" maxlength="20" autocomplete="nickname" placeholder="DRIVER" data-mmo-name />
+          </label>
+          <button id="mmoLfgBtn" class="mmo-btn mmo-btn--primary mmo-lfg-btn" type="button">FIND ME A RACE</button>
+          <p id="mmoLfgQueue" class="mmo-lfg-queue">QUEUE 0 · 4 DRIVERS TO START</p>
+          <div id="mmoFill" class="mmo-fill" data-mmo-fill="0/50">
+            <div class="mmo-fill-track" role="progressbar" aria-label="Grid fill" aria-valuemin="0" aria-valuemax="50" aria-valuenow="0">
+              <span class="mmo-fill-bar" data-mmo-fill-bar></span>
+            </div>
+            <span class="mmo-fill-text" data-mmo-fill-text>0 / 50 SEATED</span>
+          </div>
+          <p class="mmo-lfg-eta">ETA <b class="mmo-num" id="mmoEta">--:--</b></p>
+          <div class="mmo-lfg-actions">
+            <button id="mmoStart" class="mmo-btn" type="button" disabled>START NOW</button>
+            <button id="mmoBots" class="mmo-btn" type="button" aria-pressed="false">BOTS OFF</button>
+            <button id="mmoSpectate" class="mmo-btn" type="button" aria-pressed="false">WATCH ONLY</button>
+          </div>
+          <div id="mmoParty" class="mmo-party">
+            <p class="mmo-party-label">PARTY</p>
+            <div class="mmo-party-row">
+              <code id="mmoPartyCode">----</code>
+              <button id="mmoCopyLink" class="mmo-btn mmo-btn--tiny" type="button">COPY LINK</button>
+            </div>
+            <p class="mmo-party-hint">Two drivers max · the code joins your friend</p>
+          </div>
+        </div>
+        <div id="mmoSeat" class="mmo-seat mmo-you" aria-live="polite">
+          <span class="mmo-seat-label">YOUR SEAT</span>
+          <b class="mmo-seat-val" data-mmo-seat>—</b>
+          <span id="mmoTeam" class="mmo-team-pill" data-team="none">NO TEAM</span>
+        </div>
+      </aside>
+
+      <section class="mmo-panel mmo-col--grid" aria-labelledby="mmoGridTitle">
+        <div class="mmo-panelhead">
+          <h2 id="mmoGridTitle">THE GRID <span class="mmo-panelnote">50 SLOTS · 4 TEAMS</span></h2>
+          <div id="mmoFilters" class="mmo-filters" role="group" aria-label="Grid filters">
+            <button class="mmo-chip is-on" type="button" data-filter="all" aria-pressed="true">ALL</button>
+            <button class="mmo-chip" type="button" data-filter="sol" aria-pressed="false">SOL</button>
+            <button class="mmo-chip" type="button" data-filter="pac" aria-pressed="false">PAC</button>
+            <button class="mmo-chip" type="button" data-filter="map" aria-pressed="false">MAP</button>
+            <button class="mmo-chip" type="button" data-filter="dig" aria-pressed="false">DIG</button>
+            <button class="mmo-chip" type="button" data-filter="bots" aria-pressed="false">BOTS</button>
+          </div>
+        </div>
+        <div id="mmoGrid" class="mmo-grid" role="list" aria-label="50-seat grid">
+          <div class="mmo-slot" data-seat="1" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 1, empty"><span class="mmo-slot-avatar" aria-hidden="true">01</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="2" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 2, empty"><span class="mmo-slot-avatar" aria-hidden="true">02</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="3" data-team="map" data-state="empty" role="listitem" aria-label="Seat 3, empty"><span class="mmo-slot-avatar" aria-hidden="true">03</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="4" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 4, empty"><span class="mmo-slot-avatar" aria-hidden="true">04</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="5" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 5, empty"><span class="mmo-slot-avatar" aria-hidden="true">05</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="6" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 6, empty"><span class="mmo-slot-avatar" aria-hidden="true">06</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="7" data-team="map" data-state="empty" role="listitem" aria-label="Seat 7, empty"><span class="mmo-slot-avatar" aria-hidden="true">07</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="8" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 8, empty"><span class="mmo-slot-avatar" aria-hidden="true">08</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="9" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 9, empty"><span class="mmo-slot-avatar" aria-hidden="true">09</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="10" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 10, empty"><span class="mmo-slot-avatar" aria-hidden="true">10</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="11" data-team="map" data-state="empty" role="listitem" aria-label="Seat 11, empty"><span class="mmo-slot-avatar" aria-hidden="true">11</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="12" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 12, empty"><span class="mmo-slot-avatar" aria-hidden="true">12</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="13" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 13, empty"><span class="mmo-slot-avatar" aria-hidden="true">13</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="14" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 14, empty"><span class="mmo-slot-avatar" aria-hidden="true">14</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="15" data-team="map" data-state="empty" role="listitem" aria-label="Seat 15, empty"><span class="mmo-slot-avatar" aria-hidden="true">15</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="16" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 16, empty"><span class="mmo-slot-avatar" aria-hidden="true">16</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="17" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 17, empty"><span class="mmo-slot-avatar" aria-hidden="true">17</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="18" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 18, empty"><span class="mmo-slot-avatar" aria-hidden="true">18</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="19" data-team="map" data-state="empty" role="listitem" aria-label="Seat 19, empty"><span class="mmo-slot-avatar" aria-hidden="true">19</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="20" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 20, empty"><span class="mmo-slot-avatar" aria-hidden="true">20</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="21" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 21, empty"><span class="mmo-slot-avatar" aria-hidden="true">21</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="22" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 22, empty"><span class="mmo-slot-avatar" aria-hidden="true">22</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="23" data-team="map" data-state="empty" role="listitem" aria-label="Seat 23, empty"><span class="mmo-slot-avatar" aria-hidden="true">23</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="24" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 24, empty"><span class="mmo-slot-avatar" aria-hidden="true">24</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="25" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 25, empty"><span class="mmo-slot-avatar" aria-hidden="true">25</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="26" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 26, empty"><span class="mmo-slot-avatar" aria-hidden="true">26</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="27" data-team="map" data-state="empty" role="listitem" aria-label="Seat 27, empty"><span class="mmo-slot-avatar" aria-hidden="true">27</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="28" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 28, empty"><span class="mmo-slot-avatar" aria-hidden="true">28</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="29" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 29, empty"><span class="mmo-slot-avatar" aria-hidden="true">29</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="30" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 30, empty"><span class="mmo-slot-avatar" aria-hidden="true">30</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="31" data-team="map" data-state="empty" role="listitem" aria-label="Seat 31, empty"><span class="mmo-slot-avatar" aria-hidden="true">31</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="32" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 32, empty"><span class="mmo-slot-avatar" aria-hidden="true">32</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="33" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 33, empty"><span class="mmo-slot-avatar" aria-hidden="true">33</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="34" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 34, empty"><span class="mmo-slot-avatar" aria-hidden="true">34</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="35" data-team="map" data-state="empty" role="listitem" aria-label="Seat 35, empty"><span class="mmo-slot-avatar" aria-hidden="true">35</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="36" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 36, empty"><span class="mmo-slot-avatar" aria-hidden="true">36</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="37" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 37, empty"><span class="mmo-slot-avatar" aria-hidden="true">37</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="38" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 38, empty"><span class="mmo-slot-avatar" aria-hidden="true">38</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="39" data-team="map" data-state="empty" role="listitem" aria-label="Seat 39, empty"><span class="mmo-slot-avatar" aria-hidden="true">39</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="40" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 40, empty"><span class="mmo-slot-avatar" aria-hidden="true">40</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="41" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 41, empty"><span class="mmo-slot-avatar" aria-hidden="true">41</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="42" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 42, empty"><span class="mmo-slot-avatar" aria-hidden="true">42</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="43" data-team="map" data-state="empty" role="listitem" aria-label="Seat 43, empty"><span class="mmo-slot-avatar" aria-hidden="true">43</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="44" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 44, empty"><span class="mmo-slot-avatar" aria-hidden="true">44</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="45" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 45, empty"><span class="mmo-slot-avatar" aria-hidden="true">45</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="46" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 46, empty"><span class="mmo-slot-avatar" aria-hidden="true">46</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="47" data-team="map" data-state="empty" role="listitem" aria-label="Seat 47, empty"><span class="mmo-slot-avatar" aria-hidden="true">47</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="48" data-team="dig" data-state="empty" role="listitem" aria-label="Seat 48, empty"><span class="mmo-slot-avatar" aria-hidden="true">48</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="49" data-team="sol" data-state="empty" role="listitem" aria-label="Seat 49, empty"><span class="mmo-slot-avatar" aria-hidden="true">49</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+          <div class="mmo-slot" data-seat="50" data-team="pac" data-state="empty" role="listitem" aria-label="Seat 50, empty"><span class="mmo-slot-avatar" aria-hidden="true">50</span><span class="mmo-slot-body"><span class="mmo-slot-name">EMPTY</span><span class="mmo-slot-meta">OPEN</span></span></div>
+        </div>
+      </section>
+
+      <section id="mmoStandings" class="mmo-panel mmo-col--standings" aria-labelledby="mmoStandingsTitle">
+        <div class="mmo-panelhead">
+          <h2 id="mmoStandingsTitle">STANDINGS</h2>
+          <span class="mmo-panelnote" data-mmo-standings-note>LIVE · 2 HZ</span>
+        </div>
+        <div class="mmo-tablewrap">
+          <table class="mmo-table">
+            <caption class="mmo-sr">Live standings — the leaders, your neighbours and you</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="mmo-c-pos">POS</th>
+                <th scope="col">DRIVER</th>
+                <th scope="col" class="mmo-c-team">TEAM</th>
+                <th scope="col" class="mmo-c-num">LAP</th>
+                <th scope="col" class="mmo-c-num">TIME</th>
+                <th scope="col" class="mmo-c-num">GAP</th>
+              </tr>
+            </thead>
+            <tbody id="mmoStandingsBody">
+              <tr class="mmo-row-note"><td colspan="6">WAITING FOR THE GRID — the board fills at 2 Hz once the race starts</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="mmoYourRow" class="mmo-your-row mmo-you" aria-live="polite" aria-label="Your standing">
+          <span class="mmo-your-pos" data-mmo-you-pos>—</span>
+          <span class="mmo-your-name">YOU</span>
+          <span class="mmo-your-team">NO TEAM</span>
+          <span class="mmo-your-num">LAP —</span>
+          <span class="mmo-your-num">—</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mmo-feedwrap" aria-labelledby="mmoFeedTitle">
+      <h2 class="mmo-feed-title" id="mmoFeedTitle">FEED</h2>
+      <ol id="mmoFeed" class="mmo-feed" role="log" aria-live="polite" aria-relevant="additions">
+        <li class="mmo-feed-line" data-placeholder="1"><span class="mmo-feed-tag">SAMPLE</span> P3 — Solvalou took the lead (placeholder line; live log starts with the socket).</li>
+        <li class="mmo-feed-line" data-placeholder="1"><span class="mmo-feed-tag">SAMPLE</span> PLAYER 07 set 0:39.8 (placeholder line).</li>
+      </ol>
+    </footer>
+
+    <div id="mmoCountdown" class="mmo-countdown" role="status" aria-live="polite" aria-label="Race start countdown" hidden>
+      <span class="mmo-countdown-n" data-mmo-countdown-n>3</span>
+      <span class="mmo-countdown-label">GRID ASSEMBLED · HOLD YOUR SEAT</span>
+    </div>
+
+    <section id="mmoResults" class="mmo-results" aria-labelledby="mmoResultsTitle" aria-live="polite" hidden>
+      <div class="mmo-results-panel">
+        <header class="mmo-results-head">
+          <div>
+            <p class="mmo-kicker">RACE COMPLETE</p>
+            <h2 id="mmoResultsTitle">RESULTS</h2>
+          </div>
+          <p id="mmoNextRace" class="mmo-nextrace">NEXT RACE IN <b class="mmo-num">00:20</b></p>
+          <a class="mmo-btn mmo-btn--primary" href="/race-day" data-mmo-back>BACK TO LOBBY</a>
+        </header>
+        <div id="mmoPodium" class="mmo-podium" aria-label="Podium">
+          <article class="mmo-podium-slot" data-place="1"><span class="mmo-podium-pos">P1</span><b class="mmo-podium-name">—</b><i class="mmo-podium-meta">WINNER</i></article>
+          <article class="mmo-podium-slot" data-place="2"><span class="mmo-podium-pos">P2</span><b class="mmo-podium-name">—</b><i class="mmo-podium-meta">RUNNER-UP</i></article>
+          <article class="mmo-podium-slot" data-place="3"><span class="mmo-podium-pos">P3</span><b class="mmo-podium-name">—</b><i class="mmo-podium-meta">THIRD</i></article>
+        </div>
+        <div class="mmo-tablewrap mmo-tablewrap--results">
+          <table class="mmo-table">
+            <caption class="mmo-sr">Race results — 50 rows, your row pinned</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="mmo-c-pos">POS</th>
+                <th scope="col">DRIVER</th>
+                <th scope="col" class="mmo-c-team">TEAM</th>
+                <th scope="col" class="mmo-c-num">TOTAL</th>
+                <th scope="col" class="mmo-c-num">BEST LAP</th>
+                <th scope="col" class="mmo-c-num">GAP</th>
+              </tr>
+            </thead>
+            <tbody id="mmoResultsBody">
+              <tr class="mmo-row-note"><td colspan="6">NO RESULT YET — finish the race or wait for the next event</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    /* Boot: embed flag, page mode (driver|spectate), invite chip, boot strip.
+       Static shell only — mmo-ui.js / mmo-lfg.js / mmo-spectate.js own every
+       live value; this script never touches the socket. */
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var embedded = params.get('embedded') === '1';
+      var mode = params.get('spectate') === '1' ? 'spectate' : 'driver';
+      var party = String(params.get('party') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      var flag = embedded ? '1' : '0';
+      var strip = null;
+      var started = 0;
+      // Set the mode before the deferred modules run, so the spectate furniture
+      // (LFG aside, standings, results) never flashes while mmo-spectate.js
+      // is still loading.
+      document.documentElement.setAttribute('data-embedded', flag);
+      document.documentElement.setAttribute('data-mode', mode);
+      if (document.body) document.body.setAttribute('data-mode', mode);
+
+      function fail(text) {
+        if (!strip) strip = document.getElementById('mmoBoot');
+        if (!strip) return;
+        strip.hidden = false;
+        strip.setAttribute('data-boot', 'error');
+        var note = document.getElementById('mmoBootNote');
+        if (note) note.textContent = text;
+      }
+
+      var boot = function () {
+        document.body.setAttribute('data-embedded', flag);
+        document.body.setAttribute('data-mode', mode);
+        var bar = document.getElementById('mmoTopbar');
+        if (bar) bar.hidden = embedded;
+        var invite = document.getElementById('mmoPartyInvite');
+        var code = document.getElementById('mmoPartyInviteCode');
+        if (invite && code && party) { code.textContent = party; invite.hidden = false; }
+        strip = document.getElementById('mmoBoot');
+        started = Date.now();
+        if (strip) strip.hidden = false;
+        // Hide the strip on the first online chip, or after 8 s — never when the
+        // client is missing: then the failure text is the point of the strip.
+        var timer = setInterval(function () {
+          if (!strip || strip.getAttribute('data-boot') === 'error') { clearInterval(timer); return; }
+          var conn = document.getElementById('mmoConn');
+          var online = !!conn && (conn.getAttribute('data-conn') === 'online' || conn.getAttribute('data-link') === 'open');
+          if (online || Date.now() - started > 8000) { clearInterval(timer); strip.hidden = true; }
+        }, 400);
+        setTimeout(function () { if (!window.__R4_MMO) fail('MMO CLIENT NOT LOADED'); }, 3000);
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+  </script>
+  <script type="module" src="/js/mmo-client.js"></script>
+  <script type="module" src="/js/mmo-ui.js"></script>
+  <script type="module" src="/js/mmo-lfg.js"></script>
+  <script type="module" src="/js/mmo-spectate.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[
+  { "log": "wait for the yellow PRESS START screen" },
+  { "wait": 40000 },
+  { "shot": "press-start" },
+  { "log": "Start -> main menu; give it 12s for the R4 logo animation" },
+  { "tap": [0, 3, 180, 12000] },
+  { "shot": "menu" },
+  { "eval": "(function(){const G=window.EJS_emulator;const cands={gmModule:G.gameManager&&G.gameManager.Module,emuModule:G.Module};const out={cands:{},hits:{}};for(const [k,M] of Object.entries(cands)){if(!M||!M.HEAPU8){out.cands[k]='none';continue;}const H=M.HEAPU8;out.cands[k]={len:H.length,heapLen:M.HEAPU8.length};const find=(str)=>{const pat=Array.from(str).map(c=>c.charCodeAt(0));const hits=[];for(let i=0;i<H.length-pat.length&&hits.length<6;i++){if(H[i]!==pat[0])continue;let ok=true;for(let j=1;j<pat.length;j++){if(H[i+j]!==pat[j]){ok=false;break;}}if(ok)hits.push(i);}return hits;};out.hits[k]={grandPrix:find('GRAND PRIX'),vsBattle:find('VS BATTLE'),welcome:find('WELCOME'),timeAttack:find('TIME ATTACK')};}return out;})()" },
+  { "eval": "(function(){const M=window.EJS_emulator.gameManager.Module;const H=M.HEAPU8;const hex=(o,n)=>Array.from(H.slice(o,o+n)).map(b=>b.toString(16).padStart(2,'0')).join('');return {a2180:hex(0xA2180,96),acc40:hex(0xACC40,32),ac808:hex(0xAC808,64)};})()" },
+  { "log": "Down 1" },
+  { "tap": [0, 5, 120, 900] },
+  { "shot": "menu-down1" },
+  { "log": "Down 2" },
+  { "tap": [0, 5, 120, 900] },
+  { "shot": "menu-down2" },
+  { "log": "Circle" },
+  { "tap": [0, 8, 180, 3200] },
+  { "shot": "menu-circle" },
+  { "wait": 1200 }
+]

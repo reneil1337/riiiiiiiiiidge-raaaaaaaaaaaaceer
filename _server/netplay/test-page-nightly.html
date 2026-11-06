@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>RR4 Netplay Harness (4.3-pre)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0d12; color: #e8eefc; font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 12px 16px; background: #121722; border-bottom: 1px solid #263044; display: flex; gap: 18px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 15px; letter-spacing: .12em; color: #ffd23f; }
+  header code { color: #8fd3ff; }
+  #status { padding: 8px 16px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #9fb0c9; border-bottom: 1px solid #1d2533; }
+  #status b { color: #e8eefc; font-weight: 600; }
+  #game { width: min(100vw, 960px); height: min(62vh, 600px); margin: 12px auto; background: #000; }
+  #log { margin: 0 16px 20px; padding: 10px 12px; background: #0f1420; border: 1px solid #1d2533; border-radius: 8px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; max-height: 26vh; overflow: auto; color: #b9c7dd; }
+</style>
+</head>
+<body>
+<header>
+  <h1>RR4 // NETPLAY HARNESS 4.3-pre</h1>
+  <span>server <code id="srv"></code></span>
+  <span>gameID <code id="gid"></code></span>
+  <span>host <code id="host"></code></span>
+</header>
+<div id="status">
+  <span>boot <b id="stBoot">no</b></span>
+  <span>socket <b id="stSock">-</b></span>
+  <span>room <b id="stRoom">-</b></span>
+  <span>role <b id="stRole">-</b></span>
+  <span>players <b id="stPlayers">0</b></span>
+  <span>rtc <b id="stRtc">-</b></span>
+  <span>video <b id="stVideo">-</b></span>
+</div>
+<div id="game"></div>
+<pre id="log"></pre>
+
+<script>
+  // EmulatorJS 4.3.0-pre (nightly): netplay is enabled by default and uses
+  // WebRTC for video/input plus Socket.IO for signalling. No experimental flag.
+  const PSX = new URLSearchParams(location.search).has('psx');
+  window.EJS_DEBUG_XX = false;
+  window.EJS_language = 'en-US';
+  window.EJS_player = '#game';
+  window.EJS_core = PSX ? 'psx' : 'nes';
+  window.EJS_gameName = PSX ? 'Ridge Racer Type 4' : 'nestest';
+  // PSX: load the .bin directly; EmulatorJS generates a .cue for single-track
+  // discs. Loading the .cue alone does not fetch its referenced .bin.
+  window.EJS_gameUrl = PSX ? '/disc/r4.chd' : 'test-assets/nestest.nes';
+  if (PSX) window.EJS_biosUrl = '/bios/openbios.bin';
+  window.EJS_pathtodata = 'ejs-data-nightly/';
+  window.EJS_gameID = PSX ? 4002 : 4001;
+  // The 621 MB R4 track is painfully slow to persist in IndexedDB in headless
+  // Chrome; skip the cache for the PSX smoke test.
+  if (PSX) window.EJS_cacheConfig = { enabled: false, cacheMaxSizeMB: 0, cacheMaxAgeMins: 0 };
+  window.EJS_volume = 0;
+  window.EJS_startOnLoaded = true;
+  window.EJS_netplayServer = location.protocol + '//' + location.hostname + ':3010';
+  window.EJS_netplayICEServers = new URLSearchParams(location.search).get('ice') === '0'
+    ? []
+    : [{ urls: 'stun:stun.l.google.com:19302' }];
+
+  window.__gameStarted = false;
+  window.EJS_onGameStart = function () { window.__gameStarted = true; log('EJS_onGameStart'); };
+  window.EJS_onExit = function () { log('EJS_onExit'); };
+
+  const lines = [];
+  function log(msg) {
+    const line = new Date().toISOString().slice(11, 23) + '  ' + msg;
+    lines.push(line);
+    if (lines.length > 120) lines.shift();
+    const el = document.getElementById('log');
+    if (el) el.textContent = lines.join('\n');
+    console.log('[harness]', msg);
+  }
+  window.__harnessLog = lines;
+  document.getElementById('srv').textContent = window.EJS_netplayServer;
+  document.getElementById('gid').textContent = String(window.EJS_gameID);
+  document.getElementById('host').textContent = location.host;
+
+  function refresh() {
+    const e = window.EJS_emulator;
+    const np = e && e.netplay;
+    const players = (np && np.players) || {};
+    const pcs = np ? Object.values(np.peerConnections || {}) : [];
+    const v = np && np.video;
+    document.getElementById('stBoot').textContent = window.__gameStarted ? 'yes' : (e ? 'loading' : 'no');
+    document.getElementById('stSock').textContent = np && np.socket ? (np.socket.connected ? 'connected' : 'disconnected') : '-';
+    document.getElementById('stRoom').textContent = (np && np.extra && np.extra.room_name) || (e && e.isNetplay ? 'joined' : '-');
+    document.getElementById('stRole').textContent = e && e.isNetplay ? (np.owner ? 'host' : 'guest') : '-';
+    document.getElementById('stPlayers').textContent = String(Object.keys(players).length);
+    document.getElementById('stRtc').textContent = pcs.length ? pcs.map((p) => p.connectionState || p.iceConnectionState).join(',') : '-';
+    document.getElementById('stVideo').textContent = v ? (v.videoWidth + 'x' + v.videoHeight + ' ' + v.readyState) : '-';
+  }
+  setInterval(refresh, 250);
+
+  window.__np = {
+    ready() { return !!(window.EJS_emulator && window.EJS_emulator.netplay); },
+    setName(name) {
+      const e = window.EJS_emulator;
+      if (!e.netplay.name) e.netplay.showNameDialog?.();
+      e.netplay.name = name;
+      log('name=' + name);
+    },
+    openRoom(name, maxPlayers, password) {
+      window.EJS_emulator.netplay.openRoom(name, maxPlayers || 2, password || '');
+      log('openRoom ' + name);
+    },
+    joinRoom(sessionId, roomName, maxPlayers) {
+      window.EJS_emulator.netplay.joinRoom(sessionId, roomName, maxPlayers || 2, '');
+      log('joinRoom ' + sessionId);
+    },
+    snapshot() {
+      const e = window.EJS_emulator;
+      const np = e && e.netplay;
+      const pcs = np ? Object.values(np.peerConnections || {}) : [];
+      const v = np && np.video;
+      return {
+        started: window.__gameStarted,
+        isNetplay: !!(e && e.isNetplay),
+        owner: !!(np && np.owner),
+        connected: !!(np && np.socket && np.socket.connected),
+        players: np ? Object.values(np.players || {}).map((p) => p.player_name) : [],
+        session: np && np.extra ? np.extra.sessionid : null,
+        room: np && np.extra ? np.extra.room_name : null,
+        url: np ? np.url : null,
+        iceServers: np ? np.iceServers : null,
+        webRtcReady: !!(np && np.webRtcReady),
+        peers: pcs.map((p) => ({
+          state: p.pc ? p.pc.connectionState : p.connectionState,
+          ice: p.pc ? p.pc.iceConnectionState : p.iceConnectionState,
+          dc: p.dataChannel ? p.dataChannel.readyState : null,
+        })),
+        video: v ? { w: v.videoWidth, h: v.videoHeight, readyState: v.readyState, time: v.currentTime } : null,
+        netplayButtonVisible: !!(e && e.frontend && e.frontend.elements && e.frontend.elements.bottomBar.netplay &&
+          e.frontend.elements.bottomBar.netplay[0] &&
+          getComputedStyle(e.frontend.elements.bottomBar.netplay[0]).display !== 'none'),
+        paused: !!(e && e.paused),
+        canvas: (() => { const c = document.querySelector('#game canvas'); return c ? { w: c.width, h: c.height } : null; })(),
+      };
+    },
+    inputTest(player, index, value) {
+      const e = window.EJS_emulator;
+      if (!e || !e.netplay || !e.netplay.simulateInput) return false;
+      e.netplay.simulateInput(player, index, value);
+      return true;
+    },
+  };
+  log('config server=' + window.EJS_netplayServer + ' gameID=' + window.EJS_gameID);
+</script>
+<script src="ejs-data-nightly/loader.js"></script>
+</body>
+</html>

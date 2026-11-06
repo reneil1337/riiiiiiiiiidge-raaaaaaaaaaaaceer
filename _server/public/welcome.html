@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ridge Racer Type 4 // Welcome to Ridge City</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/welcome.css" />
+</head>
+<body>
+  <main class="wwrap">
+    <header class="whero">
+      <p class="wkicker">REAL RACING ROOTS '99 // TEAM PADDOCK</p>
+      <h1>WELCOME TO<br /><em>RIDGE CITY</em></h1>
+      <p class="wsub">The garage is open. The soundtrack is running. Walk the paddock, check the machines, find a rival in the 2P lounge, then take the grid.</p>
+      <div class="wactions">
+        <a class="wbtn wbtn--primary" href="/games">MACHINE CHECK <span>→</span></a>
+        <a class="wbtn wbtn--2p" href="/multiplayer">2P LOUNGE <span>→</span></a>
+        <a class="wbtn" href="/docs/introduction">FIELD MANUAL <span>↗</span></a>
+      </div>
+      <div class="wstatus">
+        <span><b>3</b> discs in the deck</span>
+        <span><b>4</b> teams</span>
+        <span><b>57</b> music tracks</span>
+        <span class="wlive"><i></i> audio linked</span>
+      </div>
+    </header>
+
+    <section class="wgrid">
+      <a class="wcard wcard--mmo" href="/race-day" aria-label="Race Day — 50 drivers, one race. Join the LFG queue.">
+        <span class="wtag">MASS START // EVERY DRIVER RUNS THEIR OWN CAR <i class="wpill">NEW</i></span>
+        <h2>RACE DAY</h2>
+        <p class="wlead">50 DRIVERS · ONE RACE</p>
+        <p class="wmeta">LFG · MASS START · LIVE LEADERBOARD</p>
+        <span class="wgo">JOIN THE QUEUE →</span>
+      </a>
+      <a class="wcard wcard--r4" href="/games">
+        <span class="wtag">DISC 01 // SLUS-00797</span>
+        <h2>Ridge Racer Type 4</h2>
+        <p>Four teams, one garage, real split-screen. The headline machine and the 2P title.</p>
+        <span class="wgo">CHECK THE MACHINE →</span>
+      </a>
+      <a class="wcard wcard--2p" href="/multiplayer">
+        <span class="wtag">2P HEAD-TO-HEAD</span>
+        <h2>The Lounge</h2>
+        <p>Create a code or join a rival. Pick a team, ready up, roll a random grid, then race.</p>
+        <span class="wgo">FIND A RIVAL →</span>
+      </a>
+      <a class="wcard wcard--docs" href="/docs/introduction">
+        <span class="wtag">FIELD MANUAL</span>
+        <h2>The Garage File</h2>
+        <p>Every disc, control, LAN port, REA finding and the full Type 4 dossier.</p>
+        <span class="wgo">OPEN THE MANUAL →</span>
+      </a>
+    </section>
+
+    <section class="wteams">
+      <div class="wteamhead">
+        <p class="wkicker">TEAM PADDOCK // 1999 ENTRY</p>
+        <h2>FOUR GARAGES. ONE GRID.</h2>
+      </div>
+      <div class="wteamgrid">
+        <article class="wteam wteam--sol"><span class="wno">02</span><h3>Racing Team Solvalou</h3><p>Works precision. Clean entry, measured exit.</p></article>
+        <article class="wteam wteam--pac"><span class="wno">76</span><h3>Pac Racing Club</h3><p>Club energy. Built for a shared screen and a loud room.</p></article>
+        <article class="wteam wteam--map"><span class="wno">83</span><h3>Micro Mouse Mappy</h3><p>Small-team craft. Finds time in the tight stuff.</p></article>
+        <article class="wteam wteam--dig"><span class="wno">14</span><h3>Dig Racing Team</h3><p>Field engineering. Reads the telemetry, rebuilds the car.</p></article>
+      </div>
+    </section>
+
+    <footer class="wfoot">
+      <span>ENTER STARTS THE R4 INTRO</span>
+      <span>MUSIC CONTINUES IN DOCS</span>
+      <span>2P LOUNGE // TCP 3010</span>
+      <span>RACE DAY // 50 SEATS</span>
+    </footer>
+  </main>
+  <script>
+    // A link is activated by Enter, not Space. The Race Day card is a primary
+    // control, so forward Space to the same anchor click the hub already uses —
+    // no second navigation path: the cabinet shell intercepts that click.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== ' ' && event.key !== 'Spacebar') return;
+      const card = event.target && event.target.closest ? event.target.closest('a.wcard--mmo') : null;
+      if (!card) return;
+      event.preventDefault();
+      card.click();
+    });
+  </script>
+</body>
+</html>

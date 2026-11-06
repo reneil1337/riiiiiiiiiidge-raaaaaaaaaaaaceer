@@ -1,0 +1,154 @@
+/* Race Day — accessibility patch for /race-day (opt-in, additive).
+ *
+ * Owner: a11y. Nothing here changes layout structure, only token values,
+ * colour-independence cues and hit areas. Load it AFTER mmo.css and
+ * mmo-lfg.css (page-wire adds one line to _server/public/mmo.html):
+ *
+ *   <link rel="stylesheet" href="/css/mmo-a11y.css" />
+ *
+ * Evidence: _runtime/analysis/22-mmo-a11y.md (measured with Brave 1440x900,
+ * 390x844 and 320x800 / 400 % zoom, prefers-reduced-motion emulated).
+ * Only the must-fix visual findings live here; the keyboard / live-region
+ * fixes are JS diffs in the report (§5) because they cannot be done in CSS.
+ */
+
+/* ---------------------------------------------------------- 1. contrast --- */
+
+/* A1 — --mmo-dim (#6f7684) is under 4.5:1 on *every* surface it is used on
+ *      (3.95-4.39 measured). It paints 12+ small labels: CALLSIGN, ON THE
+ *      GRID / TRACK / CLOCK, LOOKING FOR GROUP, STARTS IN, PARTY hint,
+ *      podium meta, row notes and the SLOW badge. #949cad = 7.26 on #07080c,
+ *      6.54 on #14161f, 5.94 on #12141d. */
+:root {
+  --mmo-dim: #949cad;
+  --mmo-accent-text: #ff5a52; /* A3 — accent red as *text* (6.52:1 on body) */
+}
+
+/* A2 — empty-seat metadata: #5d6472 on #0b0d13 = 3.27:1 (7 px). */
+.mmo-slot[data-state="empty"] .mmo-slot-meta { color: #7d8492; } /* 5.17:1 */
+
+/* A3 — the only accent-as-text case (LINK LOST): #e10600 = 4.03:1. */
+.mmo-conn[data-conn="closed"] { color: var(--mmo-accent-text); }
+
+/* A4 — SLOW is an alert state, not a muted one; also 7 px #949cad on #07080c
+ *      reads as "disabled". Yellow = 13.37:1 and matches #mmoState. */
+.mmo-qbadge[data-slow="1"] {
+  border-color: rgba(255, 209, 102, .65);
+  color: var(--mmo-yellow);
+}
+
+/* A5 — NO TEAM pill is inherited from --mmo-dim; keep it, but prove it in the
+ *      report: #949cad on #12141d = 5.94:1 (it was 4.02:1). No extra rule. */
+
+/* A6 — the offline slot dims *all* of its text to 45 % (composite ~#747a83 on
+ *      #101219 = 4.4:1). Keep the state obvious without dropping the label. */
+.mmo-slot[data-state="offline"] {
+  opacity: .72;
+  filter: grayscale(.35);
+}
+
+/* ------------------------------------------------- 2. not hue-only ------- */
+
+/* B1 — team was carried by the avatar hue and the left bar only. Add the
+ *      three-letter team to the slot meta as text (aria-label already names
+ *      the team, so screen readers hear it once). Empty seats are skipped:
+ *      their meta line is deliberately blank. */
+.mmo-slot:not([data-state="empty"])[data-team="sol"] .mmo-slot-meta::before { content: "SOL · "; }
+.mmo-slot:not([data-state="empty"])[data-team="pac"] .mmo-slot-meta::before { content: "PAC · "; }
+.mmo-slot:not([data-state="empty"])[data-team="map"] .mmo-slot-meta::before { content: "MAP · "; }
+.mmo-slot:not([data-state="empty"])[data-team="dig"] .mmo-slot-meta::before { content: "DIG · "; }
+
+/* B2 — `queued` and `seated` differed only by border hue + a pulse. Give the
+ *      queued seat the same kind of text badge as YOU / BOT / ✓. */
+.mmo-slot[data-state="queued"]::after {
+  content: "QUEUED";
+  margin-left: auto;
+  padding: 1px 3px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: var(--mmo-accent-2);
+  font-family: var(--mmo-mono);
+  font-size: 6.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* B3 — the mobile avatar grid hides every ::after badge (that keeps the 5-col
+ *      grid tight); the queued badge must obey the same rule. */
+@media (max-width: 760px) {
+  .mmo-slot[data-state="queued"]::after { display: none; }
+  .mmo-slot[data-team] .mmo-slot-meta::before { content: none; }
+}
+
+/* ------------------------------------------------------ 3. target size --- */
+
+/* C1 — WCAG 2.2 AA 2.5.8 needs 24x24 CSS px. Measured: the grid filter chips
+ *      are 28x14, CREATE PARTY / JOIN / COPY INVITE LINK are 18 px tall and the
+ *      standalone top-bar links are 9 px tall. */
+.mmo-chip {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 4px 7px;
+}
+.mmo-btn--tiny { min-height: 24px; }
+.mmo-topbar-nav a,
+.mmo-topbar-back,
+.mmo-skip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/* C2 — the report's 44 px touch goal for coarse pointers (phones). The primary
+ *      LFG button is already 40 px; give the rest the same room. */
+@media (pointer: coarse) {
+  .mmo-btn,
+  .mmo-btn--tiny,
+  .mmo-lfg-btn,
+  .mmo-chip,
+  .mmo-skip {
+    min-height: 44px;
+  }
+  .mmo-chip { min-width: 44px; }
+  .mmo-topbar-nav a,
+  .mmo-topbar-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* ---------------------------------------------------------- 4. focus ------ */
+
+/* D1 — the results panel is a full-screen surface with tabindex="-1"; once
+ *      mmo-ui.js moves focus into it (see report §5 diff A/B) it needs a ring
+ *      that does not look like a stray box around the viewport. */
+#mmoResults:focus-visible,
+#mmoResults:focus {
+  outline: 2px solid var(--mmo-accent-2);
+  outline-offset: -2px;
+}
+
+/* D2 — the "SKIP TO MY RESULT" link is the first stop inside the results
+ *      overlay; keep it pinned so it is reachable without scrolling 50 rows. */
+#mmoResults > .mmo-skip {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 0 6px;
+}
+
+/* ------------------------------------------------ 5. motion (AA 2.3.3) --- */
+
+/* E1 — mmo.css already kills the queued pulse (1.6 s), the boot/conn blink
+ *      (1.4 s) and the 300 ms fill-bar transition under reduce (measured:
+ *      animationName none, transitionDuration 0 s, zero transitions >200 ms).
+ *      Nothing to add; this block documents the contract for the patch file. */
+@media (prefers-reduced-motion: reduce) {
+  .mmo-slot[data-state="queued"] { animation: none !important; }
+  .mmo-fill-bar { transition: none !important; }
+}

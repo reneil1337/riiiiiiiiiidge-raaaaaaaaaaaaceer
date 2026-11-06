@@ -1,0 +1,135 @@
+---
+title: Quickstart
+description: From a cold PC to a running Ridge Racer Type 4 cabinet in five minutes.
+---
+
+There are a few independent ways to run the game. Pick one:
+
+| If you want… | Use | Needs |
+| --- | --- | --- |
+| Players on phones/laptops, no install | **Browser arcade** (`/play`) | Node 20+, the disc image |
+| The sharpest native picture and a real pad | **Native recomp** | Windows 10/11, OpenGL, a PS1 BIOS or bundled OpenBIOS |
+| Head-to-head on two machines | **2P lounge** (`/multiplayer`) | Node 20+, the disc image, TCP 3010 open |
+| Two seats on one host cabinet | **Host-stream fallback** (`/lobby`) | Native recomp + ffmpeg + Python audio helper |
+
+## 1. Browser arcade
+
+```powershell
+cd _server
+start-test.bat
+```
+
+Wait for the banner, then open the printed LAN URL on the host or any device on the same network:
+
+```text
+http://<host-lan-ip>:8080/play
+```
+
+Choose **Ridge Racer Type 4** in the disc deck, pick a filter and a **QUALITY**
+tier (AUTHENTIC is the default), and press **INSERT DISC & START**. The first
+load downloads the CHD; later loads read it back from IndexedDB.
+
+- Solo: `/play?game=r4`
+- Rage Racer: `/play?game=rage`
+- Ridge Racer (1994): `/play?game=ridge`
+- Head-to-head: the 2P lounge, below
+
+:::note{title="First-run firewall"}
+If another device cannot reach the page, run `_server\firewall.bat` once and approve the UAC prompt. Netplay also needs `_server\firewall-netplay.bat` for inbound TCP 3010.
+:::
+
+## 2. Native recomp
+
+The release is already installed at:
+
+```text
+<repo>\RidgeRacer4Recomp\
+```
+
+The shortest launch is the wrapper in the project root:
+
+```powershell
+& "<repo>\Play Ridge Racer 4.bat"
+```
+
+Or call the runtime directly, skipping the built-in launcher:
+
+```powershell
+& "<repo>\RidgeRacer4Recomp\Ridge_Racer_4_Recompiled.exe" `
+  --no-launcher `
+  --bios "<repo>\RidgeRacer4Recomp\bios\openbios.bin" `
+  --disc "<repo>\disc\R4 - Ridge Racer Type 4 (USA).cue"
+```
+
+The CUE's directory is the working directory, so the `FILE` entries in the CUE resolve. The default controller in this workspace is an **Xbox One Controller** in analog mode; see [Controls](/reference/controls).
+
+:::note{title="Disc check"}
+`game.toml` pins the USA release **SLUS-00797**, track 1 at 621,421,920 bytes,
+MD5 `bf1d92037b1b2be83b459c11f0b89eb6`. The current dump matches. A bare CUE, a
+ZIP, or a PAL/JPN image is not enough.
+:::
+
+## 3. Two-player LAN, Type 4
+
+On the host:
+
+```powershell
+cd _server
+start-test.bat
+```
+
+On both machines open the same LAN origin, press **ENTER**, then **2P**:
+
+```text
+http://<host-lan-ip>:8080/
+```
+
+1. Host: name yourself and press **CREATE ROOM** (leave the code empty to have
+   one generated). Guest: open **OPEN ROOMS** and press **JOIN**, type the code,
+   or follow the invite `/multiplayer?room=CODE`.
+2. Both pick a team and press **READY**. One READY does nothing.
+3. The server rolls the course and preset cars, both tabs show the same 3-2-1-GO
+   overlay, and the shell loads `/play-net?embedded=1&threads=0&mpRole=…&mpRoom=…&mpRace=…&mpTrackIndex=…&mpCarHost=…&mpCarGuest=…`.
+4. The host runs the PSX core, auto-hosts `R4-<code>` (password `raceId`) and
+   drives R4's VS Battle menus; the guest joins and its P2 input unlocks when the
+   host signals `race-live`.
+5. Keep the host tab in the foreground.
+
+The raw `/play-net` panel still works as a manual fallback: create/join a room
+there and the host picks **2-player race** in the game menu by hand. Full
+details: [2P lounge & race handoff](/multiplayer/lounge) and
+[R4 2P LAN](/multiplayer/r4-2p).
+
+## Verify the install
+
+```powershell
+# server + cabinet state
+Invoke-RestMethod http://127.0.0.1:8080/api/status | ConvertTo-Json -Depth 4
+
+# netplay relay
+Invoke-RestMethod http://127.0.0.1:3010/health
+```
+
+Expected relay shape:
+
+```json
+{"ok":true,"service":"rr4-netplay","port":3010,"rooms":0,"players":0}
+```
+
+## Stop everything
+
+```powershell
+cd _server
+stop.bat
+```
+
+That closes the native cabinet, the process on **8080**, and the relay on **3010**.
+
+## Next
+
+- [The games](/games/ridge-racer-type-4) — what each disc is and why it matters
+- [Browser arcade](/play/browser) — disc deck, filters, BIOS, caching
+- [Performance and networking](/play/performance) — measured fps, latency, TLS
+- [2P lounge & race handoff](/multiplayer/lounge) — room plan, macro, `mp*` params
+- [LAN multiplayer](/multiplayer/lan) — ports, firewall, room flow, limitations
+- [Troubleshooting](/reference/troubleshooting) — black screen, frozen menus, pad not detected

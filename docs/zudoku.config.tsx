@@ -1,0 +1,182 @@
+import type { ZudokuConfig } from "zudoku";
+import "./styles.css";
+
+const config: ZudokuConfig = {
+  site: {
+    title: "RIDGE RACER // TYPE 4",
+    logo: {
+      src: {
+        light: "/logo-light.svg",
+        dark: "/logo-dark.svg",
+      },
+      alt: "Ridge Racer Type 4",
+      width: "212px",
+      height: "38px",
+      href: "/introduction",
+      reloadDocument: false,
+    },
+    showPoweredBy: false,
+  },
+  basePath: "/docs",
+  metadata: {
+    title: "Ridge Racer Type 4 — Recomp & LAN Arcade",
+    favicon: "/favicon.svg",
+    description:
+      "Field manual for the Ridge Racer Type 4 native recompilation, the browser arcade, and LAN multiplayer. Three Namco racers, one cabinet.",
+    keywords: [
+      "Ridge Racer Type 4",
+      "Rage Racer",
+      "Ridge Racer",
+      "PSXRecomp",
+      "REA",
+      "EmulatorJS",
+      "LAN multiplayer",
+    ],
+  },
+  navigation: [
+    {
+      type: "category",
+      label: "Start",
+      icon: "flag",
+      items: ["/introduction", "/start/quickstart"],
+    },
+    {
+      type: "category",
+      label: "The Games",
+      icon: "gamepad-2",
+      items: [
+        "/games/ridge-racer-type-4",
+        "/games/rage-racer",
+        "/games/ridge-racer-1994",
+      ],
+    },
+    {
+      type: "category",
+      label: "Play",
+      icon: "monitor",
+      items: [
+        "/play/browser",
+        "/play/performance",
+        "/play/music",
+        "/play/native-recomp",
+        "/play/host-stream",
+      ],
+    },
+    {
+      type: "category",
+      label: "Multiplayer",
+      icon: "network",
+      items: [
+        "/multiplayer/lan",
+        "/multiplayer/lounge",
+        "/multiplayer/shared-car",
+        "/multiplayer/ghost-run",
+        {
+          type: "doc",
+          file: "/multiplayer/race-day",
+          label: "Race Day (50 drivers)",
+        },
+        "/multiplayer/r4-2p",
+      ],
+    },
+    {
+      type: "category",
+      label: "Engineering",
+      icon: "cpu",
+      items: ["/engineering/rea", "/engineering/architecture"],
+    },
+    {
+      type: "category",
+      label: "Reference",
+      icon: "book",
+      items: [
+        "/reference/controls",
+        "/reference/troubleshooting",
+        "/reference/legal",
+      ],
+    },
+  ],
+  redirects: [
+    { from: "/", to: "/introduction" },
+    { from: "/games", to: "/games/ridge-racer-type-4" },
+    { from: "/multiplayer", to: "/multiplayer/lan" },
+    { from: "/play", to: "/play/browser" },
+  ],
+  docs: {
+    files: "/pages/**/*.{md,mdx}",
+  },
+  slots: {
+    "head-navigation-end": <a href="/play">Play</a>,
+  },
+  syntaxHighlighting: {
+    themes: {
+      light: "min-light",
+      dark: "tokyo-night",
+    },
+    languages: [
+      "powershell",
+      "toml",
+      "bat",
+      "json",
+      "ini",
+      "typescript",
+      "javascript",
+      "bash",
+      "yaml",
+      "markdown",
+      "html",
+    ],
+  },
+  theme: {
+    light: {
+      background: "#f7f3e9",
+      foreground: "#0a1020",
+      card: "#fffdf7",
+      cardForeground: "#0a1020",
+      popover: "#fffdf7",
+      popoverForeground: "#0a1020",
+      primary: "#d81f2a",
+      primaryForeground: "#fffdf7",
+      secondary: "#ece5d6",
+      secondaryForeground: "#111a2c",
+      muted: "#eee8db",
+      mutedForeground: "#5c6474",
+      accent: "#006f9e",
+      accentForeground: "#f7fbff",
+      destructive: "#c31822",
+      destructiveForeground: "#fffdf7",
+      border: "#d8cfbd",
+      input: "#d8cfbd",
+      ring: "#006f9e",
+      radius: "0.15rem",
+    },
+    dark: {
+      background: "#05070f",
+      foreground: "#f4f7ff",
+      card: "#0a1120",
+      cardForeground: "#f4f7ff",
+      popover: "#0a1120",
+      popoverForeground: "#f4f7ff",
+      primary: "#ff2b2b",
+      primaryForeground: "#ffffff",
+      secondary: "#101b31",
+      secondaryForeground: "#dbe7ff",
+      muted: "#0c1526",
+      mutedForeground: "#8ea0bf",
+      accent: "#29d3ff",
+      accentForeground: "#031018",
+      destructive: "#ff3b3b",
+      destructiveForeground: "#ffffff",
+      border: "#1b2a45",
+      input: "#1b2a45",
+      ring: "#29d3ff",
+      radius: "0.15rem",
+    },
+    fonts: {
+      sans: "Oxanium",
+      mono: "JetBrains Mono",
+    },
+  },
+};
+
+export default config;

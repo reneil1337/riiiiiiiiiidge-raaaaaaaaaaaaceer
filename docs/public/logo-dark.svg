@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 64" width="360" height="64" role="img" aria-label="Ridge Racer Type 4">
+  <defs>
+    <linearGradient id="rrRed" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff2b2b"/>
+      <stop offset="1" stop-color="#ff7a3d"/>
+    </linearGradient>
+  </defs>
+  <g fill="none">
+    <path d="M2 14h10l-6 36H0z" fill="url(#rrRed)"/>
+    <path d="M15 14h5l-6 36h-5z" fill="#29d3ff" opacity=".9"/>
+  </g>
+  <text x="30" y="34" fill="#f4f7ff" font-family="Bahnschrift, 'Arial Narrow', sans-serif" font-size="27" font-style="italic" font-weight="800" letter-spacing="1.2">RIDGE RACER</text>
+  <text x="31" y="52" fill="#29d3ff" font-family="JetBrains Mono, 'Cascadia Mono', Consolas, ui-monospace, monospace" font-size="13" font-weight="700" letter-spacing="2.4">TYPE 4 // FIELD MANUAL</text>
+</svg>

@@ -1,0 +1,34 @@
+{
+  "source_evidence": "analysis/pe-imports.json",
+  "artifact": "D:\\ridge racer type 4\\RidgeRacer4Recomp\\Ridge_Racer_4_Recompiled.exe",
+  "format": "PE",
+  "machine": "x86_64",
+  "imphash": "bab14c07fdf2d1770cb9416332887a38",
+  "imports_examined": 610,
+  "dlls": [
+    { "name": "USER32.dll", "functions": 123, "relevance": "window placement, focus, keyboard state, raw input, window enumeration" },
+    { "name": "KERNEL32.dll", "functions": 159, "relevance": "process/thread/job objects, fibers, timing" },
+    { "name": "GDI32.dll", "functions": 32, "relevance": "window/DC and software presentation support" },
+    { "name": "OPENGL32.dll", "functions": 26, "relevance": "OpenGL present path" },
+    { "name": "WINMM.dll", "functions": 20, "relevance": "wave audio / timing" },
+    { "name": "WS2_32.dll", "functions": 14, "relevance": "Winsock (lobby/netplay code path)" },
+    { "name": "SHELL32.dll", "functions": 7, "relevance": "file pickers, shell integration" },
+    { "name": "dbghelp.dll", "functions": 7, "relevance": "crash/stack diagnostics" }
+  ],
+  "input_surface_observed": [
+    "AttachThreadInput",
+    "SetForegroundWindow",
+    "SetWindowPos",
+    "MapVirtualKeyW",
+    "GetKeyboardState",
+    "GetAsyncKeyState",
+    "EnumWindows",
+    "GetWindowTextW"
+  ],
+  "implication": "The native runtime is a Win32 window that consumes standard Windows keyboard state. A browser relay can drive the game's two configured keyboard pads with keybd_event after focusing the game window; no injected DLL or virtual gamepad driver is required.",
+  "limitations": [
+    "Imports do not prove an import is bound or reachable at runtime.",
+    "The release build has the TCP debug server compiled out; the relay therefore uses the same USER32 input path as the game.",
+    "Built-in netplay is compiled out of this release; it returns netplay start failed (-1). The project uses the game's real 2-player split-screen mode instead."
+  ]
+}

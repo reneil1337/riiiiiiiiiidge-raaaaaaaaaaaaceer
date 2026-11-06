@@ -1,0 +1,703 @@
+/* Native EmulatorJS player shell. Scoped to play.html only. */
+@import url("/css/game-themes.css");
+:root {
+  --rr-red: #e10600;
+  --ink: #07080c;
+  --ink-2: #0d0f16;
+  --line: rgba(255, 255, 255, .12);
+  --text: #f2f3f7;
+  --muted: #9aa0ae;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+}
+
+#play-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100dvh;
+}
+
+/* ---- top bar ---- */
+#play-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, #12141c, #0a0b11);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.brand em {
+  font-style: normal;
+  color: var(--rr-red);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--rr-red);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--muted);
+}
+
+.picker select {
+  appearance: none;
+  background: #14161f;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 28px 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: .04em;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.picker select:focus-visible { outline: 2px solid var(--rr-red); outline-offset: 1px; }
+
+.status {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.status[data-state="running"] { color: #6ef2a2; border-color: rgba(110, 242, 162, .35); }
+.status[data-state="error"] { color: #ff8b86; border-color: rgba(255, 139, 134, .4); }
+.status[data-state="loading"] { color: #ffd166; border-color: rgba(255, 209, 102, .35); }
+
+/* ---- buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #1a1c26, #101219);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: rgba(225, 6, 0, .65); background: linear-gradient(180deg, #241016, #150a0d); }
+.btn:focus-visible { outline: 2px solid var(--rr-red); outline-offset: 2px; }
+.btn .btn-ico { font-size: 14px; line-height: 1; color: var(--rr-red); }
+
+/* MULTIPLAYER entry on /play and the netplay page header. */
+.btn-netplay {
+  border-color: rgba(225, 6, 0, .55);
+  background: linear-gradient(180deg, #2a0b0e, #17070a);
+  text-decoration: none;
+}
+.btn-netplay:hover { border-color: var(--rr-red); background: linear-gradient(180deg, #3a0d12, #1d080b); }
+.btn-netplay .btn-ico { font-size: 10px; font-weight: 900; letter-spacing: .04em; }
+.btn-ghost { text-decoration: none; color: var(--muted); }
+.btn-docs {
+  border-color: rgba(41, 211, 255, .45);
+  background: linear-gradient(180deg, #071a22, #051217);
+  color: #9fe9ff;
+  text-decoration: none;
+}
+.btn-docs:hover { border-color: #29d3ff; background: linear-gradient(180deg, #0a2633, #06181f); }
+.btn-docs .btn-ico { font-size: 10px; font-weight: 900; }
+
+.fs-exit {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(10, 11, 16, .92);
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  cursor: pointer;
+  /* No backdrop-filter: a live blur over the game is a per-frame GPU pass
+     (play.css used to blur 6px behind this pill in fullscreen). Solid fill. */
+  opacity: .55;
+  transition: opacity .18s ease;
+}
+.fs-exit:hover, .fs-exit:focus-visible { opacity: 1; outline: none; border-color: var(--rr-red); }
+.fs-exit[hidden] { display: none; }
+
+/* ---- click-to-race / sound unlock ---- */
+.sound-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: radial-gradient(60% 60% at 50% 50%, rgba(0, 0, 0, .35), rgba(0, 0, 0, .62));
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  animation: gate-in .25s ease both;
+}
+.sound-gate[hidden] { display: none; }
+.sound-gate-main {
+  font-size: clamp(18px, 2.4vw, 26px);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: .1em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .8);
+}
+.sound-gate-sub {
+  font-size: 10px;
+  letter-spacing: .22em;
+  color: #ffd166;
+}
+.sound-gate::after {
+  content: "";
+  width: 46px;
+  height: 2px;
+  margin-top: 10px;
+  background: var(--rr-red);
+  box-shadow: 0 0 14px rgba(225, 6, 0, .8);
+}
+@keyframes gate-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- fullscreen ---- */
+body.fs #play-bar,
+body.fs #play-foot { display: none; }
+
+body.fs #play-stage {
+  padding: 0;
+  background: #000;
+}
+
+body.fs #game,
+body[data-game].fs #game {
+  /* Backing-store cap: the core renders 640x480 and the canvas follows this box
+     1:1 in CSS px. Fullscreen used to be 1920x1080 (2.25x the windowed box, 3x
+     the core); 1280x960 is exactly 2x and 44 % cheaper, and it is the largest
+     integer-friendly box that still looks sharp. Both constraints are kept so
+     the box never overflows a short/fullscreen viewport.
+     The second selector matches game-themes.css (body[data-game].fs #game), which
+     would otherwise win on specificity and restore 100vw/100vh. */
+  width: min(100vw, 1280px, calc(100vh * 4 / 3));
+  height: auto;
+  max-width: none;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.fs .sound-gate { background: radial-gradient(60% 60% at 50% 50%, rgba(0, 0, 0, .3), rgba(0, 0, 0, .55)); }
+
+/* ---- stage ---- */
+#play-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #1a1020 0%, #07080c 62%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 64px);
+  padding: 12px;
+  overflow: hidden;
+}
+
+/* EmulatorJS mounts its own canvas + chrome inside #game. Size the box to a
+   true 4:3 area that always fits between the top bar and the footer. */
+#game {
+  position: relative;
+  width: min(100%, 960px, calc((100dvh - 132px) * 4 / 3));
+  /* EmulatorJS adds .ejs_parent { width:100%; height:100% }; force the box
+     back to a true 4:3 so the canvas is not vertically stretched. */
+  height: auto;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .07);
+  /* EmulatorJS needs a concrete box before boot. */
+  min-height: 240px;
+}
+
+#game canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #000;
+}
+
+/* De-emphasise EmulatorJS's own menu bar; it fades in on hover/focus. */
+#game .ejs_menu_bar {
+  opacity: .28;
+  transition: opacity .18s ease;
+}
+#game:hover .ejs_menu_bar,
+#game:focus-within .ejs_menu_bar {
+  opacity: .96;
+}
+
+/* EmulatorJS's own loading text lives inside #game; keep it readable. */
+#game .ejs_start_button { font-family: inherit; }
+
+/* ---- boot overlay ---- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(60% 60% at 50% 45%, rgba(8, 9, 14, .82), rgba(8, 9, 14, .94));
+  backdrop-filter: blur(2px);
+  transition: opacity .45s ease, visibility .45s ease;
+  z-index: 4;
+}
+
+.overlay[hidden] { display: none; }
+.overlay.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.overlay-inner {
+  width: min(520px, 100%);
+  text-align: center;
+}
+
+.overlay-kicker {
+  font-size: 10px;
+  letter-spacing: .32em;
+  color: var(--rr-red);
+  margin-bottom: 12px;
+}
+
+.overlay h1 {
+  margin: 0 0 12px;
+  font-size: clamp(22px, 4vw, 34px);
+  letter-spacing: .06em;
+  font-style: italic;
+  font-weight: 900;
+}
+
+.overlay p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.overlay-hint { margin-top: 10px !important; font-size: 11px; opacity: .75; }
+
+.bar {
+  height: 4px;
+  margin: 16px 0 4px;
+  background: rgba(255, 255, 255, .1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 8%;
+  background: linear-gradient(90deg, #8b0300, var(--rr-red));
+  border-radius: inherit;
+  transition: width .3s ease;
+}
+
+.bar i.indeterminate {
+  animation: slide 1.25s ease-in-out infinite;
+}
+
+@keyframes slide {
+  0% { transform: translateX(-100%); width: 45%; }
+  100% { transform: translateX(240%); width: 45%; }
+}
+
+/* ---- footer ---- */
+#play-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 18px;
+  border-top: 1px solid var(--line);
+  background: #080910;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#play-foot .dot { opacity: .4; }
+#play-foot #footTiming { color: #cfd3dd; }
+#play-foot #footQuality { color: #9fe9ff; }
+#play-foot a { margin-left: auto; color: var(--muted); text-decoration: none; }
+#play-foot #footNetLink,
+#play-foot #footSingleLink { margin-left: auto; }
+#play-foot #footNetLink + #footLink,
+#play-foot #footSingleLink + #footLink { margin-left: 0; }
+#play-foot a:hover { color: var(--rr-red); }
+
+@media (max-width: 640px) {
+  #play-bar { gap: 8px; padding: 8px 10px; }
+  .brand { font-size: 11px; letter-spacing: .1em; }
+  .brand-mark { width: 22px; height: 22px; font-size: 12px; }
+  .picker > span { display: none; }
+  .status { display: none; }
+  #play-bar .btn { padding: 7px 10px; font-size: 9px; letter-spacing: .08em; }
+  #play-stage { padding: 6px; }
+  #play-foot { padding: 6px 10px; font-size: 9px; }
+  #game { width: min(100%, calc((100dvh - 112px) * 4 / 3)); }
+}
+
+/* narrow phones: keep the header/footer inside 390px */
+@media (max-width: 520px) {
+  #play-bar { gap: 6px; padding: 6px 8px; min-width: 0; }
+  #brandGame { display: none; }
+  .brand { gap: 0; min-width: 0; }
+  .picker { min-width: 0; }
+  .picker select { max-width: 150px; min-width: 0; padding: 6px 24px 6px 8px; font-size: 11px; }
+  #play-bar .btn { padding: 6px 8px; font-size: 8px; letter-spacing: .04em; white-space: nowrap; }
+  #play-foot { flex-wrap: wrap; gap: 4px; padding: 6px 8px; font-size: 8px; overflow: hidden; }
+  #play-foot .dot { display: none; }
+  #footTiming { white-space: normal; }
+  body { overflow-x: hidden; }
+
+  /* Two-row phone header: identity/actions first, GAME selector full width
+     below. Keeps the selector reachable and the fullscreen button on-screen. */
+  #play-bar { flex-wrap: wrap; align-items: center; }
+  .brand { flex: 0 0 auto; }
+  #play-bar .btn { flex: 0 0 auto; }
+  .picker {
+    order: 10;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .picker select {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+}
+
+/* ---- presentation filters (CSS overlay; works on both games) ---- */
+#game { position: relative; }
+#game::before,
+#game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+body[data-filter="scanlines"] #game::after {
+  opacity: .55;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.30) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+body[data-filter="crt"] #game::after {
+  opacity: .65;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0,0,0,.30) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.45) 100%);
+  mix-blend-mode: multiply;
+}
+body[data-filter="crt"] #game canvas {
+  filter: saturate(1.12) contrast(1.06);
+}
+body[data-filter="vignette"] #game::before {
+  opacity: 1;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.62) 100%);
+}
+body[data-filter="sharp"] #game canvas {
+  filter: contrast(1.08) saturate(1.06);
+}
+.filter-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: .12em;
+  color: var(--muted);
+  margin-left: 10px;
+}
+.filter-picker select {
+  background: #14161f;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 10px;
+}
+@media (max-width: 520px) {
+  .filter-picker { margin-left: 0; }
+  .filter-picker span { display: none; }
+}
+
+/* DLSS 5 is a game-box CSS grade applied inline on #game by play.js after the
+   first stable EJS frame (play-net.js keeps its stage/video grade). The grade
+   is "smooth": it upscales with the browser's sampler. Turning the grade off
+   (or picking FILTER: Sharp/CRT) restores the pixelated nearest-neighbour
+   upscale, so sharp vs smooth is a real choice - the old selector was dead
+   because play.js wrote data-filter="off" for the grade. */
+body[data-filter="dlss5"] #game canvas,
+body[data-filter="dlss5"] #game video {
+  image-rendering: auto;
+}
+
+/* ---- pre-boot disc setup ---- */
+.btn-eject { border-color: rgba(255, 209, 102, .45); color: #ffd166; }
+.btn-primary {
+  background: linear-gradient(180deg, #e10600, #a50400);
+  border-color: #ff4a43;
+  color: #fff;
+  font-size: 12px;
+  padding: 11px 16px;
+}
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+#setup {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: auto;
+  padding: clamp(14px, 3vw, 34px);
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(225, 6, 0, .16), transparent 45%),
+    linear-gradient(160deg, #090a10 0%, #0d0f17 60%, #08090e 100%);
+}
+#setup[hidden] { display: none; }
+.setup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 auto 18px;
+  max-width: 1180px;
+}
+.setup-kicker {
+  color: var(--rr-red);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .22em;
+  margin-bottom: 6px;
+}
+.setup-head h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 52px);
+  letter-spacing: .04em;
+  line-height: .95;
+}
+.setup-sub { color: var(--muted); font-size: 12px; margin: 9px 0 0; }
+.setup-grid {
+  display: grid;
+  grid-template-columns: minmax(230px, .85fr) minmax(280px, 1.25fr) minmax(240px, .9fr);
+  gap: 14px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.disc-deck, .disc-library, .setup-options {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(10, 12, 19, .82);
+  padding: 14px;
+}
+.disc-slot {
+  height: 150px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(180deg, #0a0b10 0 5px, #0e1018 5px 10px);
+  box-shadow: inset 0 0 30px #000;
+}
+.disc-art {
+  width: 105px;
+  height: 105px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: var(--muted);
+  background: radial-gradient(circle at 35% 30%, #3b3f4e, #12141c 55%, #05060a 70%);
+  border: 1px solid rgba(255, 255, 255, .18);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .55);
+}
+.disc-art.loaded { color: #fff; background: radial-gradient(circle at 35% 30%, #ff6a62, #a40500 45%, #2a0608 70%); }
+.disc-name { font-weight: 800; letter-spacing: .08em; margin-top: 12px; }
+.disc-meta { color: var(--muted); font-size: 11px; min-height: 30px; margin: 4px 0 12px; }
+.local-disc {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+.local-disc input { color: var(--text); font-size: 10px; max-width: 100%; }
+.setup-section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.setup-section-head h2 { margin: 0; font-size: 10px; letter-spacing: .2em; color: var(--muted); }
+.setup-section-head span { color: var(--muted); font-size: 9px; }
+.disc-list { display: grid; gap: 8px; }
+.disc-card {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #0c0e15;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.disc-card:hover, .disc-card.selected { border-color: rgba(225, 6, 0, .7); background: #171017; }
+.disc-card .mini-disc {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #555b6c, #171a23 55%, #05060a 72%);
+  border: 1px solid rgba(255,255,255,.16);
+}
+.disc-card strong { display: block; font-size: 12px; letter-spacing: .03em; }
+.disc-card small { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
+.disc-card .badge { color: #6ef2a2; font-size: 9px; letter-spacing: .1em; }
+.setup-field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--muted); font-size: 9px; letter-spacing: .14em; }
+.setup-field select, .setup-field input[type="range"] { width: 100%; }
+.setup-field select {
+  background: #14161f; color: var(--text); border: 1px solid var(--line);
+  border-radius: 5px; padding: 7px; font: inherit; font-size: 11px;
+}
+.setup-check { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; letter-spacing: .08em; margin: 8px 0 12px; }
+.setup-pads { border: 1px dashed var(--line); border-radius: 6px; padding: 8px; color: var(--muted); font-size: 10px; }
+.setup-links { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 10px; }
+.setup-links a { color: var(--rr-red); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-decoration: none; }
+.setup-note { color: var(--muted); font-size: 10px; line-height: 1.45; margin: 0; }
+@media (max-width: 860px) {
+  .setup-grid { grid-template-columns: 1fr 1fr; }
+  .disc-library { grid-column: 1 / -1; order: 3; }
+}
+@media (max-width: 560px) {
+  #setup { padding: 10px; }
+  .setup-head { flex-direction: column; gap: 8px; }
+  .setup-grid { grid-template-columns: 1fr; }
+  .disc-library { grid-column: auto; order: 0; }
+  .disc-slot { height: 110px; }
+  .disc-art { width: 78px; height: 78px; }
+}
+
+/* ---- LAN ghost clips ---- */
+.btn-ghost-rec { border-color: rgba(255, 209, 102, .45); color: #ffd166; }
+.btn-ghost-rec.recording { border-color: #ff4a43; color: #fff; background: #3a0b0e; }
+.ghost-head { margin-top: 14px; }
+.mini-btn {
+  border: 1px solid var(--line); background: #14161f; color: var(--muted);
+  border-radius: 4px; padding: 3px 6px; font: inherit; font-size: 8px;
+  letter-spacing: .08em; cursor: pointer;
+}
+.ghost-list { display: grid; gap: 5px; max-height: 112px; overflow: auto; margin-bottom: 6px; }
+.ghost-empty { color: var(--muted); font-size: 9px; }
+.ghost-row {
+  display: flex; align-items: center; gap: 6px; border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 6px; background: #0c0e15;
+}
+.ghost-row.active { border-color: rgba(110, 242, 162, .55); }
+.ghost-row .ghost-name { flex: 1; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ghost-row button { border: 1px solid var(--line); background: #171a23; color: var(--text); border-radius: 3px; padding: 2px 5px; font: inherit; font-size: 8px; cursor: pointer; }
+.ghost-selected { color: #6ef2a2; font-size: 8px; letter-spacing: .08em; margin-bottom: 8px; }
+.ghost-video {
+  position: fixed; right: 10px; bottom: 52px; width: min(30%, 300px);
+  aspect-ratio: 4 / 3; object-fit: contain; z-index: 7; pointer-events: none;
+  border: 1px solid rgba(110, 242, 162, .65); border-radius: 4px;
+  background: #000; box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
+  opacity: .88;
+}
+.ghost-badge {
+  position: fixed; right: 10px; bottom: calc(52px + min(30%, 300px) * .75 + 4px);
+  z-index: 8; display: flex; gap: 6px; align-items: center;
+  color: #6ef2a2; background: rgba(5, 8, 12, .82); border: 1px solid rgba(110, 242, 162, .5);
+  border-radius: 4px; padding: 3px 6px; font-size: 8px; letter-spacing: .1em;
+}
+.ghost-badge button { border: 0; background: transparent; color: #fff; font: inherit; cursor: pointer; }
+@media (max-width: 560px) {
+  .ghost-video { width: 42%; right: 6px; bottom: 46px; }
+  .ghost-badge { right: 6px; bottom: calc(46px + 42vw * .75 + 4px); }
+}
+
+[hidden] { display: none !important; }
+
+.ghost-source {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 1;
+  pointer-events: none;
+}
+
+body.ghost-recording #play-bar,
+body.ghost-recording #play-foot { display: none !important; }
+body.ghost-recording #play-stage { padding: 0; }

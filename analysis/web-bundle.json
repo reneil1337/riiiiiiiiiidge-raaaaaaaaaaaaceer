@@ -1,0 +1,14 @@
+﻿{
+  "code": "VALIDATION_ERROR",
+  "message": "REA could not read the command arguments. Check the named argument and its expected type, then try again.",
+  "fieldErrors": [
+    {
+      "code": "invalid_type",
+      "missing": true,
+      "path": "targetId",
+      "expected": "string",
+      "received": "",
+      "message": "Invalid input: expected string, received undefined"
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+---
+title: ""
+sidebar_label: Field Manual
+seo:
+  title: Ridge Racer Type 4 — Field Manual
+  description: Team entry, machine select and race control for the R4 recompilation, browser arcade and 2P LAN cabinet.
+description: Team entry, machine select and race control for the R4 recompilation, browser arcade and 2P LAN cabinet.
+fullWidth: true
+---
+
+<div className="rr-hero">
+  <div className="rr-kicker">REAL RACING ROOTS '99 // TEAM ENTRY</div>
+  <h1 className="rr-title">Ridge Racer<span>Type 4 // Team Entry</span></h1>
+  <div className="rr-sub">
+    Three discs. Four teams. Two seats. Enter the paddock, choose a machine, and
+    take the same cabinet from the browser to the LAN to the native pit wall.
+    This is the field manual for the <b>Ridge Racer Type 4</b> recompilation, the
+    self-hosted arcade, and the 2P LAN path that starts with Type 4.
+  </div>
+  <div className="rr-actions">
+    <a className="rr-btn rr-btn--primary" href="/">▶ Enter the cabinet</a>
+    <a className="rr-btn" href="/docs/multiplayer/lounge">2P lounge</a>
+    <a className="rr-btn rr-btn--ghost" href="/docs/multiplayer/lan">LAN multiplayer</a>
+  </div>
+  <div className="rr-strip">
+    <span><b>4</b> teams</span>
+    <span><b>3</b> discs</span>
+    <span><b>2P</b> Type 4</span>
+    <span><b>341 MB</b> R4 CHD</span>
+    <span><b>REA</b> evidence layer</span>
+  </div>
+</div>
+
+<img src="/docs/img/screens/cabinet-welcome.png" alt="WELCOME TO RIDGE CITY inside the cabinet shell, with the single top bar and the soundtrack player showing You The One For Me" />
+
+<div className="rr-kicker">Team paddock // 1999 entry</div>
+
+## Select your team
+
+Four badges, four ways to read the garage. Pick the one that matches the seat
+you want to fill, then take it to the grid.
+
+<div className="rr-grid rr-team-grid">
+  <div className="rr-card rr-team rr-team--solvalou">
+    <span className="rr-tag">MONOGRAM SOL · WORKS RED / IVORY</span>
+    <h3>Racing Team Solvalou</h3>
+    <p><b>Paddock read:</b> composed, precise, factory-polished. The works outfit with the cleanest pit wall.</p>
+    <p><b>Engineering trait:</b> balanced grip and a stable entry; smooth inputs beat heroics.</p>
+    <span className="rr-go">Recommended · first-time host</span>
+  </div>
+  <div className="rr-card rr-team rr-team--pac">
+    <span className="rr-tag">MONOGRAM PAC · SIGNAL YELLOW / NAVY</span>
+    <h3>Pac Racing Club</h3>
+    <p><b>Paddock read:</b> upbeat, social, loud on the radio. The club team that treats every grid slot like a party.</p>
+    <p><b>Engineering trait:</b> quick rotation and a forgiving line; easy to share a screen and a room.</p>
+    <span className="rr-go">Recommended · LAN 2P</span>
+  </div>
+  <div className="rr-card rr-team rr-team--mappy">
+    <span className="rr-tag">MONOGRAM MAP · MAPPY BLUE / CREAM</span>
+    <h3>Micro Mouse Mappy</h3>
+    <p><b>Paddock read:</b> nimble, technical, playful. The small-team specialists who find time in the tight stuff.</p>
+    <p><b>Engineering trait:</b> light steering and eager turn-in; rewards a committed drift line.</p>
+    <span className="rr-go">Recommended · drift purist</span>
+  </div>
+  <div className="rr-card rr-team rr-team--dig">
+    <span className="rr-tag">MONOGRAM DIG · GUNMETAL / HAZARD ORANGE</span>
+    <h3>Dig Racing Team</h3>
+    <p><b>Paddock read:</b> industrial, raw, garage-built. The crew that reads the telemetry, then rebuilds the car.</p>
+    <p><b>Engineering trait:</b> stiff setup and strong top end; rewards setup work and clean exits.</p>
+    <span className="rr-go">Recommended · archival / engineering</span>
+  </div>
+</div>
+
+<div className="rr-actions">
+  <a className="rr-btn rr-btn--primary" href="/play?game=r4">Enter the Grand Prix</a>
+  <a className="rr-btn" href="/docs/games/ridge-racer-type-4">Read the R4 dossier</a>
+</div>
+
+<div className="rr-kicker">Disc deck // choose your chassis</div>
+
+## Machine select
+
+Three discs sit in the deck. Sizes are the CHDs this cabinet serves; track
+counts come from the discs in the workspace. Only Type 4 carries a second car.
+
+<div className="rr-grid">
+  <a className="rr-card" href="/docs/games/ridge-racer-type-4">
+    <span className="rr-tag">DISC 01 · SLUS-00797 · 341 MB · 2P</span>
+    <h3>Ridge Racer Type 4</h3>
+    <p>The headline machine: four teams, one garage, real split-screen. The only disc here with a true second car.</p>
+    <span className="rr-go">Select machine →</span>
+  </a>
+  <a className="rr-card" href="/docs/games/rage-racer">
+    <span className="rr-tag">DISC 02 · 472 MB · 1P · 4 COURSES / 17 CD TRACKS</span>
+    <h3>Rage Racer</h3>
+    <p>495,297,808 bytes. Four long courses run both ways, a garage economy, and the heaviest disc in the deck.</p>
+    <span className="rr-go">Select machine →</span>
+  </a>
+  <a className="rr-card" href="/docs/games/ridge-racer-1994">
+    <span className="rr-tag">DISC 03 · SCUS-94300 · 296 MB · 1P · 1 COURSE / 14 CD TRACKS</span>
+    <h3>Ridge Racer (1994)</h3>
+    <p>1994 JP / 1995 US. One seaside circuit, 13 audio tracks, and the original drift that started the series.</p>
+    <span className="rr-go">Select machine →</span>
+  </a>
+</div>
+
+<div className="rr-kicker">Pit wall // four doors</div>
+
+## Race control
+
+Three runtimes, four doors to the track. The browser is primary, the 2P lounge
+is the normal two-player entry, the native recomp is the sharpest picture, and
+the old lobby on `/lobby` is the proven host-stream fallback.
+
+<div className="rr-grid">
+  <a className="rr-card" href="/docs/play/browser">
+    <span className="rr-tag">PRIMARY · ZERO INSTALL · /PLAY</span>
+    <h3>Browser arcade</h3>
+    <p>Each player renders locally in EmulatorJS + PCSX-Rearmed. No host stream, no capture, no plugin. Solo on <code>/play</code>, head-to-head from the <code>2P LOUNGE</code>.</p>
+    <span className="rr-go">Open /play →</span>
+  </a>
+  <a className="rr-card" href="/docs/multiplayer/lounge">
+    <span className="rr-tag">2P · SHELL LOUNGE · /MULTIPLAYER</span>
+    <h3>2P lounge</h3>
+    <p>Room code, four teams, both READY. The cabinet server rolls the course and preset cars, the shell hands both tabs to <code>/play-net</code>, and the host drives R4's VS Battle menu by macro. After the race, each tab's <b>REMATCH</b> chip returns that seat to the same room for another round.</p>
+    <span className="rr-go">Find your rival →</span>
+  </a>
+  <a className="rr-card" href="/docs/play/native-recomp">
+    <span className="rr-tag">WINDOWS · OPENGL · FULL SPEED</span>
+    <h3>Native recomp</h3>
+    <p>PSXRecomp turns the original MIPS into host code. OpenBIOS bundled, real controller, lowest latency in the workspace.</p>
+    <span className="rr-go">Setup →</span>
+  </a>
+  <a className="rr-card" href="/docs/play/host-stream">
+    <span className="rr-tag">FALLBACK · LOBBY AT /LOBBY</span>
+    <h3>Host-stream cabinet</h3>
+    <p>One native window, captured with ffmpeg and relayed to jsmpeg. Two seats drive the real split-screen; extra viewers spectate. Served by the old lobby, not by the shell at <code>/</code>.</p>
+    <span className="rr-go">Pit wall →</span>
+  </a>
+</div>
+
+<dl className="rr-spec">
+  <div><dt>/play boot</dt><dd>Verified on all three discs</dd></div>
+  <div><dt>2P lounge UI</dt><dd>33/33 harness-verified · 22/22 raw /mp</dd></div>
+  <div><dt>R4 2P entry</dt><dd>Both READY → automatic /play-net</dd></div>
+  <div><dt>Host macro</dt><dd>6/6 harness-verified host-only</dd></div>
+  <div><dt>Guest P2</dt><dd>40/40 two-browser race, guest drives P2</dd></div>
+  <div><dt>Fallback</dt><dd>Native split-screen + keyboard relay on /lobby</dd></div>
+</dl>
+
+<div className="rr-note rr-note--warn">
+  Known QA defects on <code>/play</code>: detected pads are auto-assigned since
+  2026-11-06 but not harness-verified, and the mobile header still clips. On a
+  plain-HTTP LAN the netplay <code>No ICE servers configured</code> warning is
+  expected and there is no COOP warning; the non-threaded core is normal there.
+</div>
+
+<div className="rr-note">
+  The normal 2P path is <code>/</code> → <b>ENTER</b> → <b>2P LOUNGE</b> → both
+  <b>READY</b>. The lounge macro opens R4's 2-player VS Battle mode for you. After
+  the race, each tab's <b>REMATCH</b> chip returns that seat to the same room for
+  another round. The raw <code>/play-net</code> panel is the manual fallback, and
+  there the host still has to pick 2-player mode in the game menu.
+</div>
+
+<div className="rr-kicker">Grand prix entry // four steps</div>
+
+:::note{title="Soundtrack"}
+The cabinet opens with an **ENTER** gate at `/`. That gesture unlocks browser
+audio, starts **"You The One For Me"** (the R4 intro), then hands over to the
+active game's playlist. Every refresh returns to ENTER. Changing the GAME
+selector changes the soundtrack and the whole page theme. Details:
+[Music player](/play/music).
+:::
+
+## The short version
+
+1. **Race entry:** open `/`, press **ENTER**, land in **WELCOME TO RIDGE CITY**, then open **GAMES** and start **Ridge Racer Type 4** (or check its disc deck first). The first load is the 341 MB R4 CHD; afterwards it comes from cache.
+2. **LAN 2P:** both machines press **2P** in the shell top bar, one creates a four-character room, the other joins, both press **READY**. The shell loads `/play-net` with the rolled plan; relay on TCP 3010.
+3. **Native:** run `Ridge_Racer_4_Recompiled.exe --no-launcher --bios ... --disc ...`, or use `Play Ridge Racer 4.bat` in the project root. The old lobby at `/lobby` is the host-stream fallback.
+4. **Verify:** `/api/status` on the host shows the LAN URLs and cabinet state. It
+   does not include relay state; check relay health at `:3010/health`.
+
+<div className="rr-checker"></div>
+
+<div className="rr-kicker">Timing board // current readout</div>
+
+## Status board
+
+| Path | State | Notes |
+| --- | --- | --- |
+| `/` — cabinet shell | **Working** | ENTER gate, parent audio element, only top bar; refresh always returns to ENTER |
+| `/welcome` — hub | **Working** | GAMES, 2P LOUNGE, PLAY, DOCS, LOBBY |
+| `/multiplayer` — 2P lounge | **Harness-verified** | 33/33 lounge UI + handoff; identical plan and identical `/play-net` URL in two browsers |
+| `/play` — all three discs | **Verified, QA defects** | Boot verified on R4, Rage and Ridge; pad auto-assign landed 2026-11-06 but is not harness-verified, the mobile header clips, and a plain-HTTP LAN shows no COOP error (the header is loopback/HTTPS only) |
+| `/play-net` — R4 2P | **Verified, scoped** | 21/21 checked-in netplay checks; host macro 6/6 host-only on the real disc (final frame is the race, not the menu); `harness-verified two-browser` 40/40 race with the guest driving P2 (two contexts, one host; two physical machines unverified; guest audio absent) |
+| `/lobby` — host-stream fallback | **Known good** | Native 2P split-screen + keyboard relay; host window stays foreground |
+| Native recomp — Windows | **Working** | OpenBIOS bundled; controller + keyboard |
+| Rage Racer / Ridge 1994 netplay | **Guest screen only** | 1P titles: a guest is a second controller, not a second car |
+
+:::note{title="Where the evidence lives"}
+Most claims that shaped the cabinet are backed by a REA inspection or a runnable
+test; REA does not cover EmulatorJS, which is checked by browser QA instead.
+Start with [2P lounge & handoff](/multiplayer/lounge),
+[REA evidence](/docs/engineering/rea) and the
+[architecture map](/docs/engineering/architecture).
+:::

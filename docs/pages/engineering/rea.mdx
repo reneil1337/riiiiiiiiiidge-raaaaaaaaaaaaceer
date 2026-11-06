@@ -1,0 +1,229 @@
+---
+title: REA evidence
+description: How rea.tools was used to inspect the runtime and decide the multiplayer architecture.
+---
+
+[REA](https://rea.tools/) is the reverse-engineering evidence layer for this
+project. It is not a netplay library and it is not part of the runtime. It gave
+the agent tools to inspect the shipped binary and the browser client, and to
+answer three questions that shaped the cabinet:
+
+1. **How does the native cabinet receive input?**
+2. **Can the release's built-in netplay be used?**
+3. **What is actually inside the browser client?**
+
+The full write-up is in `REA-ANALYSIS.md` at the project root; the raw evidence
+is under `analysis/`. A later pass used the same MCP on the two PS-X executables
+behind the Rage/Ridge [ghost replay](/multiplayer/ghost-run); its format ceiling
+and the observed addresses are in
+[§4](#4-playstation-exes-and-the-ghost-tapes-reas-format-ceiling) below.
+
+## Commands
+
+```powershell
+npx -y rea-agents@latest inspect-pe-imports `
+  "<repo>\RidgeRacer4Recomp\Ridge_Racer_4_Recompiled.exe" `
+  --json > analysis\pe-imports.json
+
+npx -y rea-agents@latest inspect-desktop-application `
+  "<repo>\RidgeRacer4Recomp" `
+  --json > analysis\desktop-app.json
+
+npx -y rea-agents@latest analyze-javascript-application `
+  "<repo>\_server\public" `
+  --json > analysis\web-app.json
+```
+
+The commands use `rea-agents@latest`; the CLI version is not pinned in the
+evidence. `analyze-web-bundle` was also attempted, but it needs a live CDP
+`targetId`; the attempt is captured as a validation error in
+`analysis/web-bundle.json`. The live page was checked with Puppeteer instead
+(`_server/test-ui.mjs`, `test-mobile.mjs`, `test-live.mjs`, and the other
+`test-*.mjs` scripts).
+
+## What REA showed
+
+### 1. The native input surface is a normal Win32 keyboard window
+
+`analysis/pe-imports-summary.json` records 610 examined imports, including 123
+`USER32.dll` functions:
+
+- `AttachThreadInput`, `SetForegroundWindow`, `SetWindowPos` — focus/window control
+- `MapVirtualKeyW`, `GetKeyboardState`, `GetAsyncKeyState` — keyboard state
+- `EnumWindows`, `GetWindowTextW` — finding the game window
+- `OPENGL32.dll` — the present path
+- `GDI32.dll` — window/DC and software presentation support
+- `WS2_32.dll` — 14 imports, a Winsock socket API surface; imports alone do not
+  prove functional netplay
+
+That led to the **host-stream fallback** input path:
+
+```text
+browser pad state (keyboard / Gamepad API / touch)
+  -> Node WebSocket /ws
+  -> keybd_event() on the two distinct keyboard pads
+     (virtual-key map hard-coded in src/input.js)
+  -> native game window (foreground, resized, topmost)
+```
+
+`src/input.js` does not read `keybinds.ini` at runtime; the two must be kept in
+sync manually. The relay logic is exercised offline and in live-browser tests,
+not against a running native game.
+
+Upstream documentation describes the release's TCP debug server as compiled out
+(`PSX_NO_DEBUG_TOOLS`), but the shipped binary still contains debug-server
+strings. The REA summary records the observed USER32 input path; it does not prove
+the debug server is absent at runtime. The relay therefore uses the same USER32
+input path the game itself uses. No DLL injection, virtual gamepad driver or
+virtual audio cable is required.
+
+The relay keeps the native window **frame**. An earlier experiment removed
+`WS_CAPTION`/`WS_THICKFRAME` for a borderless 1280×960 surface, but changing the
+style while the SDL/OpenGL window is live can make some runtimes recreate or
+quit. Production only calls `SetWindowPos` to resize and pin, then focuses.
+
+### 2. Built-in netplay is present in the UI but absent from this build
+
+The runtime has the netplay launcher UI and `recomp-net` strings, but the shipped
+executable has no `rnet_*` implementation. A direct match returns:
+
+```text
+psxrecomp: netplay start failed (-1) — built without recomp-net, or bind/peer invalid
+```
+
+The release's source is not checked out; `psx_netplay.c` is not present locally.
+Upstream `psx_netplay.c` returns `-1` when `PSX_HAS_RECOMP_NET` is undefined. The
+local evidence is the observed `netplay start failed (-1)` in
+`_runtime/p1.err.txt` / `p2.err.txt`. Rather than rebuild the whole game, the
+fallback uses the game's **real 2-player split-screen mode** and relays each
+browser seat into its own native keyboard pad.
+
+This finding governs the `/lobby` fallback. It does **not** apply to `/play-net`:
+EmulatorJS has its own netplay (WebRTC + signaling server) and does not use
+`recomp-net`.
+
+### 3. The lobby/fallback client is self-contained
+
+`analysis/web-app-summary.json` records 5 relevant files (index.html, style.css,
+app.js, controls.js, jsmpeg.min.js), 3 parsed JavaScript files, 44,993 visited
+AST nodes, 36 findings and 0 parse failures. The raw scan behind it parsed 4
+JavaScript files because it also included the legacy `js/jsmpeg.js`; the summary
+counts 3. The client is static HTML/CSS/JS with no build step, no Electron/IPC
+layer and no external runtime dependency.
+
+This scan describes the original lobby/fallback client; it predates `play.js`,
+`play-net.js` and EmulatorJS, which were not part of the AST scan.
+
+The `/play` page adds self-hosted EmulatorJS assets and a large disc-image
+download (CHD here; the 621 MB `.bin` remains the fallback). A normal reload
+reuses the browser cache, but a hard reload, cleared site data or a private
+window downloads it again. That is the deliberate trade: browser play trades a
+large first download for local rendering and no host capture.
+
+The netplay snapshot's `version.json` is stale and reports `4.2.3`; the real
+`ejs_version` is `4.3.0-pre` inside `emulator.min.js`.
+
+### 4. PlayStation exes and the ghost tapes (REA's format ceiling)
+
+The ghost replay work
+([Ghost replay](/multiplayer/ghost-run)) needed addresses inside the two PS-X
+executables, and that is where REA's format support stops:
+
+- `open_binary` on a PS-X EXE is rejected (`unsupported binary format`): REA has
+  no PS-X EXE loader. The payloads were wrapped as minimal **ELF32 MIPS**
+  `ET_EXEC` files (`_runtime/ghost-research/mkelf.cjs`) at `p_vaddr 0x80010000`,
+  and those open (`format: elf`, `architecture: mips`).
+- No deep provider then accepts them: `ghidra` is `not_configured` (no extracted
+  Ghidra 12.1.x / `GHIDRA_INSTALL_DIR`) and reports
+  `target_format_unsupported` for ELF/MIPS on win32; `hopper` is
+  `unsupported_host`; `ida` and `kuna` have no MIPS lane. `format: raw-binary`
+  does not help either — its `architecture` enum is
+  `6502|x86|x86_64|arm|arm64|m68k`.
+- Consequence: **no decompiler, no pseudocode and no REA Evidence IDs for code**
+  on these discs. The addresses come from two committed hand-written MIPS R3000
+  decoders and hi/lo xref scanners (`_runtime/ghost-research/ridge.cjs`,
+  `rage.cjs`, plus `rage-states.cjs` for the scene table), cross-checked against
+  runtime probes.
+
+What that pass observed (all *virtual addresses in the loaded image*; file offset
+= `0x800 + (vaddr - 0x80010000)`):
+
+| Disc | Cell | Address | What it is |
+| --- | --- | --- | --- |
+| Ridge 1994 (`SCUS-94300`) | screen id | `0x801D6D28` u16 | results / replay setup (8) / playback (9) |
+| Ridge 1994 | tape pointer | `0x80080434` u32 | the replay applier reads the tape through it |
+| Ridge 1994 | tape count | `0x801EB020` u32 | frames; 40 B per record |
+| Ridge 1994 | recorder idle | `0x801D6D18` u32 | `1` = recording |
+| Rage Racer (`SLUS-00403`) | scene id | `0x801E3FEC` s32 | `12` RACE, `17` REPLAY |
+| Rage Racer | race phase / lap | `0x801E6B7C` s16 / `0x8009E544` s16 | the finish branch that enters the replay |
+| Rage Racer | tape | `0x801E8804` | `43,200` B, 28 B (TA) / 48 B (GP) per sample |
+| Rage Racer | cursors / mode | `0x801E48B8`, `0x801F30C4`, `0x8009E994`, `0x801E4AB4` | write, read, wrapped, GP/TA |
+
+The full reports, probe logs and screenshots are under
+`_runtime/ghost-research/` (`ridge-rea.md`, `rage-rea.md`, `tape-probe.md`,
+`rage-finish-probe.md`). Like the rest of this section, they are evidence about
+the **shipped discs**, not about EmulatorJS or PCSX-Rearmed.
+
+To lift the ceiling later: install Ghidra 12.1.x, set `GHIDRA_INSTALL_DIR` where
+the REA MCP process starts, restart REA, and re-open the wrapped ELF (or a MIPS
+PE32 with `IMAGE_FILE_MACHINE_R4000`).
+
+## What changed after the evidence pass
+
+| Earlier assumption | Final state |
+| --- | --- |
+| Borderless 1280×960 game window | Frame-preserving 656×519 outer window (typically 640×480 client), topmost |
+| Fixed capture offsets in config | Runtime client-area rect from Win32; config values are a pre-ready fallback |
+| Rebuild the game with `recomp-net` | Keep the release binary; relay browser seats into its real 2P mode |
+| Launch only from the server | Managed launch, test mode and attach mode |
+| Window style changes for clean capture | `SetWindowPos` resize/pin only; no `WS_POPUP` in production |
+| One keyboard mapping on the host | Two native keyboard pads + browser-side P1/P2/auto layout |
+| Video-only stream | WASAPI loopback audio with video-only fallback |
+| Host-stream-only play | `/play` runs the game in each browser; host stream is the fallback |
+| Native 2P is the only multiplayer | `/play-net` uses EmulatorJS netplay for R4 |
+
+## Limitations of the evidence
+
+- PE imports prove the API surface, not that every import is reachable at runtime.
+  The 14 `WS2_32.dll` imports do not prove functional netplay.
+- AST coverage is partial; dynamic property access is not proven.
+- REA's desktop scan inventories 37 entries, but its candidates and components
+  are empty and only 2 files were probed (404 bytes). It identifies the native
+  PE/support files; it does not prove build correspondence or execution.
+- REA did **not** analyse EmulatorJS or PCSX-Rearmed. `/play` coverage is split:
+  `EJS-BOOT-REPORT.md` is R4-only; `PLAY-QA.md` covers R4 and Rage; the original
+  Ridge Racer is covered by `RIDGE-RACER-ORIGINAL.md` and
+  `_runtime/ridge-verify-result.json`. Netplay remote audio is **absent**
+  (video-only stream), not merely unverified.
+- The multiplayer relay is a shared-cabinet input relay, not rollback netcode.
+- The relay depends on the game window being foreground; `keybd_event` is global.
+  Its logic is exercised offline and in live-browser tests, not against a running
+  native game.
+- Attach mode depends on a known window title/PID and does not restart the game.
+- Audio capture follows the host's default speaker.
+- The fallback supports two drivers because that is the game mode in use.
+- The `rea-agents@latest` commands do not pin a CLI version in the evidence.
+
+## Evidence files
+
+| File | What it is |
+| --- | --- |
+| `analysis/pe-imports.json` | Full REA PE import evidence |
+| `analysis/pe-imports-summary.json` | Imports that shaped the input bridge |
+| `analysis/desktop-app.json` | REA desktop/artifact graph for the runtime folder |
+| `analysis/web-app.json` | Raw REA scan output; a JSONL progress log, not one JSON document |
+| `analysis/web-app-summary.json` | Client inventory and analysis statistics |
+| `analysis/web-bundle.json` | Attempted `analyze-web-bundle` run; validation error (missing CDP `targetId`) |
+| `_runtime/p1.err.txt` | Observed `netplay start failed (-1)` on native slot 0 |
+| `_runtime/p2.err.txt` | Observed `netplay start failed (-1)` on native slot 1 |
+| `_recon_strings.txt` | Extracted binary strings used during the REA pass |
+| `_runtime/ghost-research/*` | PS-X EXE wrappers, MIPS decoders, tape probes and the two disc reports behind the ghost replay |
+| `RidgeRacer4Recomp/README.md` | Release layout, disc requirement and OpenBIOS packaging notes |
+| `REA-ANALYSIS.md` | The narrative write-up |
+
+:::note{title="Use REA on your own copy"}
+Install REA into your coding agent with `npx rea-agents@latest setup`, then point
+it at the EXE or the `_server/public` folder. Ask a narrow question ("how does
+this window receive input?") and keep the JSON evidence next to the code so the
+next change is traceable.
+:::

@@ -1,0 +1,219 @@
+/* Race Day — LFG panel extras (mmo-lfg.js).
+ *
+ * mmo.css styles the static shell; this file only styles the nodes mmo-lfg.js
+ * adds (fill MIN marker, offline/retry row, honest-start line, bots badge +
+ * explainer, party create/join controls, callsign hint) plus the width
+ * reservations that keep the panel from jumping when a label changes length.
+ *
+ * Tokens come from mmo.css (:root). No new colours, no new fonts.
+ */
+
+/* ---------------------------------------------------------- reservations -- */
+
+/* Labels swap between FIND ME A RACE / LEAVE QUEUE / TAKE A SEAT NEXT RACE and
+   the countdown swaps 00:18 for GRID LOCKED. Reserve the longest form so the
+   card never reflows. */
+#mmoLfgBtn { min-width: 22ch; min-height: 40px; line-height: 1.35; }
+
+#mmoStart { min-width: 15ch; }
+
+#mmoEta {
+  display: inline-block;
+  min-width: 13ch;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+#mmoLfgQueue { min-height: 1.6em; }
+
+#mmoLfg .mmo-field input { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------- fill meter -- */
+
+.mmo-fill-track { min-width: 0; }
+
+/* Second marker at MIN_DRIVERS (min/max of the track) with its own label. */
+.mmo-lfg-minmark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--mmo-yellow) 0 2px,
+    transparent 2px 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mmo-lfg-minmark-tip {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  padding: 0 2px;
+  background: rgba(7, 8, 12, .82);
+  color: var(--mmo-yellow);
+  font-family: var(--mmo-mono);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 8px;
+  white-space: nowrap;
+}
+
+.mmo-fill-track[data-full="1"] .mmo-fill-bar { background: linear-gradient(90deg, #2f9e63, var(--mmo-ok) 70%, #d6ffe6); }
+
+/* ------------------------------------------------------- conn / retry row -- */
+
+.mmo-lfg-conn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 6px;
+  border: 1px solid rgba(225, 6, 0, .45);
+  background: rgba(225, 6, 0, .08);
+  color: #ffb4a8;
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.mmo-lfg-conn span { min-width: 0; overflow-wrap: anywhere; }
+.mmo-lfg-conn .mmo-btn { margin-left: auto; }
+
+/* ------------------------------------------------- honest start + notes ---- */
+
+.mmo-lfg-honest,
+.mmo-lfg-note,
+.mmo-lfg-party-note,
+.mmo-lfg-party-status,
+.mmo-lfg-error,
+.mmo-lfg-namehint {
+  margin: 0;
+  font-family: var(--mmo-mono);
+  font-size: 8px;
+  letter-spacing: .1em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* Reserved-height lines: they may be empty, but they never shift the card. */
+.mmo-lfg-honest {
+  min-height: 1.4em;
+  color: var(--mmo-yellow);
+}
+
+.mmo-lfg-honest[data-empty="1"] { visibility: hidden; }
+
+.mmo-lfg-note {
+  min-height: 1.4em;
+  color: var(--mmo-dim);
+  font-size: 7.5px;
+  letter-spacing: .08em;
+  text-transform: none;
+}
+
+.mmo-lfg-note[data-on="0"] { visibility: hidden; }
+.mmo-lfg-note[data-unsupported="1"] { color: var(--mmo-yellow); }
+
+.mmo-lfg-error {
+  padding: 5px 6px;
+  border: 1px solid rgba(255, 209, 102, .5);
+  background: rgba(255, 209, 102, .08);
+  color: var(--mmo-yellow);
+}
+
+.mmo-lfg-error[data-code="full"] { border-color: var(--mmo-accent); background: rgba(225, 6, 0, .12); color: #ffc7bf; }
+
+.mmo-lfg-namehint {
+  min-height: 1.3em;
+  color: var(--mmo-accent-2);
+  font-size: 7px;
+  letter-spacing: .12em;
+}
+
+/* ------------------------------------------------------------ party box ---- */
+
+.mmo-lfg-party-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 0;
+}
+
+.mmo-lfg-party-code { flex: 1 1 60px; min-width: 0; display: flex; }
+
+.mmo-lfg-party-input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--mmo-line);
+  border-radius: 3px;
+  background: var(--mmo-panel-2);
+  color: var(--mmo-yellow);
+  font-family: var(--mmo-display);
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: .18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.mmo-lfg-party-input::placeholder { color: var(--mmo-dim); font-style: normal; }
+.mmo-lfg-party-input:focus-visible { border-color: var(--mmo-accent-2); }
+
+.mmo-lfg-party-status {
+  margin-top: 5px;
+  color: var(--mmo-muted);
+  font-size: 7.5px;
+}
+
+.mmo-party[data-code] .mmo-lfg-party-status { color: var(--mmo-yellow); }
+
+.mmo-lfg-party-note { margin-top: 3px; color: var(--mmo-dim); font-size: 7.5px; text-transform: none; }
+
+#mmoCopyLink[disabled] { opacity: .55; }
+
+#mmoLfg[data-copied="1"] #mmoCopyLink { border-color: var(--mmo-ok); color: var(--mmo-ok); }
+
+/* ---------------------------------------------------------------- badge ---- */
+
+/* Sits beside #mmoQualityBadge: mmo-ui.js keeps writing that chip for the
+   SLOW/quality state, so the demo badge is its own node, same slot. */
+.mmo-lfg-demo {
+  border-color: var(--mmo-yellow);
+  color: var(--mmo-yellow);
+  background: rgba(255, 209, 102, .1);
+}
+
+/* ------------------------------------------------------------- spectating -- */
+
+#mmoLfg[data-spectating="1"] .mmo-lfg-btn {
+  border-color: var(--mmo-accent-2);
+  background: linear-gradient(110deg, #0f5a70, #117c96);
+}
+
+#mmoLfg[data-conn="closed"] { border-color: rgba(225, 6, 0, .4); }
+
+/* --------------------------------------------------------------- mobile ---- */
+
+@media (max-width: 700px) {
+  #mmoLfgBtn { min-width: 0; width: 100%; }
+  #mmoStart { min-width: 0; }
+  #mmoEta { min-width: 11ch; }
+  .mmo-lfg-party-actions { flex-wrap: wrap; }
+  .mmo-lfg-party-code { flex: 1 1 100%; }
+  .mmo-lfg-party-actions .mmo-btn { flex: 1 1 45%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mmo-fill-bar { transition: none !important; }
+}

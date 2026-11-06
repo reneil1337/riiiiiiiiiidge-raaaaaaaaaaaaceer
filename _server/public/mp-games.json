@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "defaultGame": "r4",
+  "games": {
+    "r4": {
+      "key": "r4",
+      "id": 4,
+      "name": "Ridge Racer Type 4",
+      "short": "R4",
+      "roomPrefix": "R4",
+      "mode": "versus",
+      "modeLabel": "VS BATTLE",
+      "seatsLabel": "Split screen - one car per driver",
+      "guestPlayerIndex": 1,
+      "macro": "auto",
+      "macroVerified": true,
+      "trackSelect": "auto",
+      "evidence": "harness-verified two-browser",
+      "tracks": [
+        { "index": 0, "name": "Helter Skelter" },
+        { "index": 1, "name": "Wonderhill" },
+        { "index": 2, "name": "Edge of the Earth" },
+        { "index": 3, "name": "Out of Blue" },
+        { "index": 4, "name": "Phantomile" },
+        { "index": 5, "name": "Brightest Nite" },
+        { "index": 6, "name": "Heaven and Hell" },
+        { "index": 7, "name": "Shooting Hoops" }
+      ],
+      "cars": [
+        { "index": 0, "name": "D1" },
+        { "index": 1, "name": "D2" },
+        { "index": 2, "name": "D3" },
+        { "index": 3, "name": "D4" },
+        { "index": 4, "name": "G1" },
+        { "index": 5, "name": "G2" },
+        { "index": 6, "name": "G3" },
+        { "index": 7, "name": "G4" }
+      ],
+      "note": "Two cars, real VS Battle, host macro drives the menus."
+    },
+    "rage": {
+      "key": "rage",
+      "id": 5,
+      "name": "Rage Racer",
+      "short": "RAGE",
+      "roomPrefix": "RAGE",
+      "mode": "shared-car",
+      "modeLabel": "SHARED CAR",
+      "seatsLabel": "One car - both pads drive it",
+      "guestPlayerIndex": 0,
+      "macro": "manual",
+      "macroVerified": false,
+      "trackSelect": "manual",
+      "evidence": "netplay transport; in-game mode unverified",
+      "tracks": [
+        { "index": 0, "name": "Mythical Coast" },
+        { "index": 1, "name": "Over Pass City" },
+        { "index": 2, "name": "Lakeside Gate" },
+        { "index": 3, "name": "The Extreme Oval" }
+      ],
+      "cars": [
+        { "index": 0, "name": "CAR 1" },
+        { "index": 1, "name": "CAR 2" },
+        { "index": 2, "name": "CAR 3" },
+        { "index": 3, "name": "CAR 4" }
+      ],
+      "note": "Rage Racer is single-player on disc; the guest pad is merged into the host car."
+    },
+    "ridge": {
+      "key": "ridge",
+      "id": 6,
+      "name": "Ridge Racer",
+      "short": "RIDGE",
+      "roomPrefix": "RIDGE",
+      "mode": "shared-car",
+      "modeLabel": "SHARED CAR",
+      "seatsLabel": "One car - both pads drive it",
+      "guestPlayerIndex": 0,
+      "macro": "manual",
+      "macroVerified": false,
+      "trackSelect": "manual",
+      "evidence": "netplay transport; in-game mode unverified",
+      "tracks": [
+        { "index": 0, "name": "Seaside Route 765" }
+      ],
+      "cars": [
+        { "index": 0, "name": "Solvalou" },
+        { "index": 1, "name": "Mappy" },
+        { "index": 2, "name": "Bosconian" },
+        { "index": 3, "name": "Nebulasray" }
+      ],
+      "note": "Ridge Racer 1994 is single-player on disc; the guest pad is merged into the host car."
+    }
+  }
+}

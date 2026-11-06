@@ -1,0 +1,230 @@
+---
+title: Browser arcade
+description: The primary path — self-hosted EmulatorJS + PCSX-Rearmed in every player's browser.
+---
+
+The browser path runs the game **inside each player's browser** on a canvas. The
+host serves the page, the EmulatorJS assets, the disc image and the BIOS over the
+LAN; for solo `/play` it does **not** capture or stream video. The
+`/play?netplay=1` page is the exception — it is host-streamed.
+
+<img src="/docs/img/screens/browser-deck.png" alt="The /play disc deck: CHOOSE A DISC, the three-disc library, FILTER/QUALITY/VOLUME settings and the soundtrack player bottom-left" />
+
+<div className="rr-route"><b>browser</b>
+  └─ /play  (disc deck)
+       └─ EmulatorJS 4.2.3
+            └─ PCSX-Rearmed (WebAssembly)
+                 ├─ /rom/r4.chd         341 MB, IndexedDB-cached
+                 ├─ /bios/openbios.bin  OpenBIOS (or HLE)
+                 ├─ canvas + Web Audio
+                 └─ Gamepad API / keyboard / touch</div>
+
+## Start
+
+```powershell
+cd _server
+start-test.bat
+```
+
+`start-test.bat` serves `/play` without taking over the host desktop. Then open:
+
+```text
+http://<host-lan-ip>:8080/play
+```
+
+On the host, test at `http://localhost:8080/play` — bare `/` is the ENTER shell,
+not the game page, and `/lobby` is the native host-stream cabinet.
+
+The normal entry is **`/` → ENTER → WELCOME TO RIDGE CITY → GAMES**, which opens
+the machine check first; **2P** in the shell top bar opens the lounge. Opening
+`/play` directly skips the hub and machine check and starts the disc deck.
+
+When `/play` or `/play-net` is loaded inside the shell (`?embedded=1`), the
+parent injects a stylesheet that hides `#play-bar` and `#play-foot` and gives the
+stage their space. The shell top bar is the only top bar, and the parent document
+owns the only audio element.
+
+Use the **GAME** selector or a direct link:
+
+| Game | URL | Disc |
+| --- | --- | --- |
+| Ridge Racer Type 4 | `/play?game=r4` | `disc/r4.chd` — 341 MB |
+| Rage Racer | `/play?game=rage` | `disc/rage-racer.chd` — 495 MB |
+| Ridge Racer (1994) | `/play?game=ridge` | `disc/ridge-racer.chd` — 296 MB |
+
+## The disc deck
+
+Bare `/play` opens the pre-boot disc deck, not the game. `/play?game=r4` boots
+that disc immediately and skips the deck; `/play?game=r4&setup=1` opens the deck
+with that disc preselected.
+
+1. Choose a disc in the **GAME** selector.
+2. Set **FILTER**, volume and fullscreen.
+3. Press **INSERT DISC & START**.
+
+Nothing downloads until you press START — on the deck path only. A direct
+`?game=` link starts fetching as it boots. **EJECT** in the running header returns
+to the deck. The deck also exposes **LAN GHOSTS** (recorded runs that play in a
+corner while you race).
+
+## First load and caching
+
+| Disc | First load | Later loads |
+| --- | --- | --- |
+| Type 4 | ~341 MB CHD | IndexedDB (`EJS_CacheLimit = 1 GiB`); `/rom` is 7-day immutable |
+| Rage Racer | ~495 MB CHD | same |
+| Ridge 1994 | ~296 MB CHD | same |
+
+The browser fetches the CHD with Range support and EmulatorJS keeps it in
+**IndexedDB**. A warm reload reads the body from IndexedDB and only revalidates
+with one `GET` + `Range: bytes=0-0` probe; there is no full re-download and no
+`HEAD`. A hard reload, cleared site data or a private window starts over. On a
+cold cache the canvas can stay black for several seconds while the image loads.
+That is expected.
+
+On a secure context (`localhost`/HTTPS) the page asks for
+`navigator.storage.persist()` once after boot so the browser is less likely to
+evict that cache; on plain-HTTP LAN it is a guarded no-op. The transport side
+(strong ETag so `If-Range` answers **206**, brotli for text assets, 65 s
+keep-alive) is on [Performance and networking](/play/performance).
+
+## BIOS
+
+OpenBIOS is served at `/bios/openbios.bin` and is the default. PCSX-Rearmed can
+fall back to HLE if a BIOS is missing or rejected — and on this build it does:
+a garbage 512 KiB "BIOS" still boots, so the served OpenBIOS is a compatibility
+nicety rather than proof that the blob is executed (`EJS-ASSETS.md`).
+
+| Option | Effect |
+| --- | --- |
+| default | `/bios/openbios.bin` |
+| `?bios=hle` | force HLE |
+| `?bios=/bios/<file>` | use a retail dump placed in `_server/game/bios/` |
+
+Retail BIOS files are user-supplied and are not redistributed. See
+[Legal](/reference/legal).
+
+## Controllers
+
+EmulatorJS reads the **Gamepad API** directly: Xbox and PlayStation pads,
+keyboard and touch all work. Remapping lives in the EmulatorJS control settings.
+
+- A pad connected **before** the page loads is now assigned into an empty slot by
+  `play.js` (since 2026-11-06). No harness covers that yet; if a pad does not
+  respond, open **Control Settings** and select it for the player.
+- After dismissing **CLICK TO RACE**, click the game canvas before using
+  Start/keyboard. The gate does not focus EmulatorJS (PLAY-QA observed
+  `activeElement=BODY`).
+- Inside the cabinet shell (`?embedded=1`) the parent ENTER click already unlocked
+  audio, so there is **no second CLICK TO RACE gate**: the game unlocks on the
+  next click and the stage stays clean.
+
+Two pads on one browser are possible; for LAN 2P use the
+[2P lounge](/multiplayer/lounge) (or the manual [R4 2P](/multiplayer/r4-2p) panel).
+
+The lounge covers all three discs since the **DISC** selector landed. Ridge Racer
+Type 4 is the **VS Battle** disc — two cars, split screen, a server-rolled course
+and an automatic host menu macro. Rage Racer and Ridge Racer 1994 are
+single-player discs and run as a **[shared car](/multiplayer/shared-car)**: the
+host starts a normal single-player race by hand and the guest's pad is merged into
+the host car, so both people drive one car — no split screen, no second car, no
+macro. The transport is the same in both cases (host-authoritative WebRTC stream,
+guest pad input, relay on `:3010`, same origin). `/play` itself is unchanged: it
+stays the single-player disc deck for all three discs.
+
+## Fullscreen, audio, filters, quality
+
+- **Fullscreen:** the red **FULLSCREEN** header button, or `F`. `Esc` or the
+  floating exit button leaves fullscreen. In the cabinet shell the `F` shortcut
+  works **while the game has focus** too: the shell mirrors the key from the
+  iframe and fullscreens the whole cabinet (bar hidden, stage fills).
+- **Fullscreen canvas cap:** the backing store is
+  `min(100vw, 1280px, 100vh*4/3)` — `1280×960` on a 1920×1080 screen, exactly 2×
+  the 640×480 core output and ~44 % cheaper than filling 1920×1080. Windowed
+  stays `960×720`. `canvas.width` is still owned by the core.
+- **Audio:** the volume defaults to **70 %**, even on a fresh profile (a missing
+  localStorage key used to resolve to 0 and mute the page). The first `keydown`,
+  the first gamepad button and any click all unlock audio, not only a pointer
+  click. The separate cabinet soundtrack (ENTER gate, R4 intro, per-game
+  playlists) is documented in [Music player](/play/music); it automatically
+  ducks to about 22 % while a `/play*` view is active so it does not fight the
+  race audio.
+- **FILTER:** defaults to **DLSS 5**, a real-time grade
+  (`contrast(1.08) saturate(1.18) brightness(1.02)`) applied to the game canvas
+  only, with Off / Scanlines / CRT / Vignette / Sharp. Because the grade is
+  scoped to `#game`, DLSS 5's smoothing and Sharp are a real choice (they used to
+  cancel each other out). It is not NVIDIA NGX neural DLSS.
+- **QUALITY:** AUTHENTIC / BALANCED / PERFORMANCE / AUTO, in SETTINGS and the
+  footer, persisted as `localStorage['rr4.play.quality']`.
+
+  | Tier | Grade | WebGL buffer | Fullscreen cap | Core options |
+  | --- | --- | --- | --- | --- |
+  | AUTHENTIC | on | `preserveDrawingBuffer` on a secure context (ghost REC usable) | 1280×960 | none |
+  | BALANCED | on | no `preserveDrawingBuffer` copy | 1280×960 | `pcsx_rearmed_icache_emulation=disabled` |
+  | PERFORMANCE | off | no copy | 1280×960 | `icache_emulation=disabled`, `frameskip_type=auto_threshold`, `threshold=33` |
+  | AUTO | follows tier | follows tier | follows tier | starts on AUTHENTIC and drops at most two tiers, 8 s cooldown |
+
+  AUTO samples ~120 rAF intervals, never climbs back, and shows the tier it chose
+  in the footer chip (`Q BALANCED AUTO`). `?quality=…` overrides the stored value
+  and writes it back; `?pb=1|0` forces `preserveDrawingBuffer` either way.
+  Core-option changes need a reload; the frame cap and grade apply live. Measured
+  effect: **60.19–60.24 emu fps**, CV 1.17–1.27 % — see
+  [Performance and networking](/play/performance).
+- **Save states:** browser-side save/load from the EmulatorJS menu.
+- **Threads:** only on secure contexts (`localhost`/HTTPS). Plain-HTTP LAN uses
+  the non-threaded core because `SharedArrayBuffer` is unavailable.
+- **Storage:** `navigator.storage.persist()` is requested once after boot on a
+  secure context; a plain-HTTP LAN origin is a guarded no-op.
+
+## URL parameters
+
+| Parameter | Effect |
+| --- | --- |
+| `?game=r4\|rage\|ridge` | select and boot the disc, skipping the deck |
+| `?setup=1` | open the disc deck; combined with `?game=` the disc is preselected |
+| `?bios=openbios\|hle` or `?bios=/bios/<file>` | BIOS choice |
+| `?threads=0` | force the non-threaded core |
+| `?threads=1` | force-enable threads; requires COOP/COEP and cross-origin isolation |
+| `?cache=0` | bypass the browser cache (netplay page) |
+| `?debug=1` | unminified EmulatorJS sources (also used on the netplay page) |
+| `?netplay=1` | load the 4.3.0-pre netplay page |
+| `?cue=auto\|file` | CUE handling on the browser page, direct boot included; not the native fallback |
+| `?quality=authentic\|balanced\|perf\|auto` | quality preset; stored as `rr4.play.quality` (`perf` = PERFORMANCE) |
+| `?pb=1\|0` | force `preserveDrawingBuffer` on/off (ghost capture needs it) |
+| `?rec=1` | arm ghost recording for the next boot (keeps `preserveDrawingBuffer`) |
+
+Threads default to on only on secure contexts (`localhost`/HTTPS). A plain-HTTP
+LAN origin is non-threaded unless `?threads=1` is set and the server sends the
+COOP/COEP headers needed for cross-origin isolation — in practice that means
+loopback, or the opt-in `RR4_TLS=1` listener on `:8443`. A plain-HTTP LAN origin
+now receives **no** COOP/COEP and logs **no** COOP warning; on loopback/HTTPS
+the shell and its embedded `/play` are both `crossOriginIsolated=true`.
+
+## Verify
+
+Boot is verified for all three discs. The 2026-11-04 `/play` PLAY-QA pass was
+9 PASS / 2 FAIL — pad auto-assignment (a `play.js` workaround landed 2026-11-06,
+not harness-verified yet) and the mobile header. A plain-HTTP LAN origin logs no
+COOP error; the header is loopback/HTTPS only.
+
+| Check | Expected |
+| --- | --- |
+| `/play` | 4.2.3 single-player page, disc deck, no netplay panel |
+| `/play?game=r4` | boots to title/gameplay, brand `RIDGE RACER TYPE 4`; skips the deck |
+| `/play?game=r4&setup=1` | deck opens with Type 4 preselected |
+| `/play?quality=perf` | footer chip reads `Q PERF`; grade off, frameskip on after reload |
+| `/multiplayer` | 2P lounge: DISC selector (R4 = VS Battle, Rage/Ridge = shared car), create/join, both READY, handoff to `/play-net?…mp*` |
+| `/rom/r4.chd` | HTTP 200/206, correct length, **strong** ETag |
+| browser console | no page errors; `No ICE servers configured` only on `/play-net` |
+
+Known QA defects remain: the mobile header still has a layout failure, and pad
+auto-assignment (now implemented in `play.js`) has no harness yet.
+
+Screenshots for this pass: `_runtime/play-perf-desktop-1440x900.png` and
+`_runtime/play-perf-mobile-390x844.png` (the deck with the QUALITY selector).
+
+:::note{title="Host requirement"}
+The host PC must stay awake while serving. Browser play does not need the native
+game, ffmpeg, or an interactive desktop; only `start-test.bat` and the disc/BIOS
+files.
+:::

@@ -1,0 +1,771 @@
+---
+title: 2P Lounge & race handoff
+description: Room codes, the DISC selector, the server race plan for all three discs, the R4 VS Battle macro, the Rage/Ridge shared car, and the /play-net handoff parameters.
+---
+
+The **2P LOUNGE** is the front door for two players on this cabinet — on any of
+the three discs. Two browsers meet on the cabinet's `/mp` socket, agree on a room
+and a **DISC**, and the server — not either browser — rolls the race plan from
+the room's disc. When both drivers are READY the shell hands both tabs to
+`/play-net`.
+
+What "two players" means depends on the disc and the room's **DRIVE** mode:
+
+- **R4** rolls a real **VS Battle**: split screen, two cars, and an automatic host
+  macro that walks R4's own menus. R4 is always `DRIVE LIVE`.
+- **Rage Racer** and **Ridge Racer 1994** roll either a **shared car**
+  (`DRIVE LIVE`: both pads drive the host's one car, the host starts the disc's
+  normal single-player race by hand) or **ghost replay** (`DRIVE GHOST`:
+  turn-based Time Trial, one driver per run, the native replay afterwards plays
+  the other seat's tape). Details: [Shared car](/multiplayer/shared-car) and
+  [Ghost replay](/multiplayer/ghost-run).
+
+<div className="rr-route"><b>SHELL</b>  /  →  ENTER  →  /welcome  →  2P LOUNGE
+  │
+  ├─ /multiplayer        create or join a 4-character room, pick DISC + DRIVE
+  │     └─ ws://host:8080/mp     rooms, disc, drive, turn, teams, READY, race plan
+  │           └─ both READY → server rolls course + preset car(s) + raceId
+  │
+  └─ handoff (both browsers, same plan, same disc, same drive)
+        /play-net?embedded=1&threads=0&mpRole=…&mpRoom=…&mpRace=…
+                  &mpTrackIndex=…&mpCarHost=…&mpCarGuest=…&game=r4|rage|ridge
+                  [&mpGhost=ghost&mpTurn=host|guest&mpLiveGhost=1]
+              ├─ R4    : auto-host R4-&lt;code&gt;, walk VS Battle menu macro
+              │           guest input gated until race-live
+              ├─ RAGE/RIDGE LIVE   : auto-host RAGE-/RIDGE-&lt;code&gt;, stage MANUAL
+              │                      host starts a single-player race; both pads drive
+              └─ RAGE/RIDGE GHOST  : one pad live per run (turn gate), the game
+                                     tapes the run; the rival tape is drawn live
+                                     (Ridge race / Rage GP) and replayed after</div>
+
+## Where each screen lives
+
+<figure>
+  <img src="/docs/img/lan/lan-lounge-host.png" alt="2P lounge host view with room code, invite URL, two seats, team pickers and READY" />
+  <figcaption>The lounge is one-on-one: 4-character room code, four teams, both READY before anything boots.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/lan-lounge-guest.png" alt="2P lounge guest view: the host room listed under JOIN A ROOM" />
+  <figcaption>The guest sees the open room and joins with one click (or the code).</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/mp-games-lounge-host.png" alt="2P lounge host with the DISC selector set to Rage Racer, the SHARED CAR hint, and a room card reading RAGE RACER // SHARED CAR" />
+  <figcaption>Since 2026-11-06 the start card has a <b>DISC</b> selector: Rage Racer reads <code>SHARED CAR · One car - both pads drive it</code>, the room card repeats the disc and mode, and the invite link carries <code>&amp;game=rage</code>.</figcaption>
+</figure>
+
+| Route | What it is | Starts a disc? |
+| --- | --- | --- |
+| `/` | R4 cabinet **ENTER** shell; the only audio element and the only top bar | No |
+| `/welcome` | **WELCOME TO RIDGE CITY** hub | No |
+| `/games` | Machine check for the three discs | No |
+| `/multiplayer` | **2P LOUNGE** — room code, disc, teams, READY, race plan | No, not until both READY |
+| `/play-net` | EmulatorJS 4.3.0-pre netplay page the lounge hands off to | Yes |
+| `/lobby` | Old lobby + native split-screen host-stream fallback | Native cabinet, if running |
+| `/play` | Standalone browser arcade with its own ENTER gate | Yes |
+
+<div className="rr-actions">
+  <a className="rr-btn rr-btn--primary" href="/">Open the cabinet</a>
+  <a className="rr-btn" href="/multiplayer">Open the lounge</a>
+  <a className="rr-btn rr-btn--ghost" href="/welcome">Ridge City hub</a>
+</div>
+
+The normal path is **`/` → ENTER → 2P LOUNGE → pick a disc → both READY →
+automatic `/play-net`**. The raw `/play-net` room panel is the manual fallback:
+in that path the host opens the disc's 2P/shared mode by hand.
+
+## The three discs
+
+`_server/public/mp-games.json` is the single source of truth for this table. It
+is served as a static asset at `/mp-games.json`, read from disk by
+`_server/src/server.js` at boot, and fetched by both `/multiplayer` and
+`/play-net`. There is deliberately no second `/api` route and no duplicated game
+list in the browser.
+
+| Key | Disc | EJS id | `mode` | `modeLabel` | Seats | Macro | Plan |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `r4` | Ridge Racer Type 4 | 4 | `versus` | `VS BATTLE` | Split screen - one car per driver | `auto` (`macroVerified: true`) | auto: 8 courses × 8 preset cars |
+| `rage` | Rage Racer | 5 | `shared-car` | `SHARED CAR` | One car - both pads drive it | `manual` | manual course, 4 courses / 4 car slots |
+| `ridge` | Ridge Racer (1994) | 6 | `shared-car` | `SHARED CAR` | One car - both pads drive it | `manual` | manual course, 1 course / 4 car slots |
+
+The room also has a **`drive`** (`live` / `ghost`). R4 is always `live`; on `rage`
+and `ridge` the host can pick `ghost`, which turns the session into turn-based
+Time Trial with a second, host-only **`turn`** selector (`host` / `guest` — this
+run's driver). `drive`/`turn` are room state, not manifest fields; the disc list
+in `mp-games.json` is still the only source for tracks and cars. Ghost mode has
+its own product page: [Ghost replay](/multiplayer/ghost-run).
+
+The room's relay prefix also comes from the manifest: `R4-`, `RAGE-`, `RIDGE-`.
+The numeric `EJS_gameID` must still match on both sides (4 / 5 / 6); that is the
+one rule the relay enforces.
+
+## Room lifecycle
+
+1. **Disc.** Pick the **DISC** on the start card. The hint under it prints the
+   manifest's `modeLabel` and `seatsLabel` (`VS BATTLE · Split screen - one car
+   per driver`, or `SHARED CAR · One car - both pads drive it`).
+   `?game=rage|ridge` preselects, and the last choice is remembered in
+   `localStorage['rr4.mp.game']`; order is deep link → stored choice → `r4`.
+2. **Drive.** For `rage`/`ridge`, the **DRIVE** control picks `LIVE` (shared car,
+   both pads, the default) or `GHOST` (turn-based Time Trial, one driver per run).
+   It is stored in `localStorage['rr4.mp.drive']` and `?drive=ghost` preselects
+   it. For R4 both buttons are disabled with the hint `RAGE + RIDGE ONLY`. A
+   ghost choice changes the hint to `GHOST · TURN-BASED TIME TRIAL - THE RUN YOU
+   FINISH BECOMES THE OTHER'S GHOST`.
+3. **Name.** Both players type a name (20 characters, remembered in
+   `localStorage` as `rr4.mp.name`).
+4. **Code.** Type a four-character code, or leave the field empty and press
+   **CREATE ROOM** to let the server pick one. Generated codes use
+   `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no `I`/`O`, no `0`/`1`); typed codes are
+   uppercased and stripped to `A–Z0–9`, four characters.
+5. **Join.** The room appears under **OPEN ROOMS** with host name, a **disc
+   badge**, a **`GHOST` badge** in ghost mode and `1/2`. A full room (`2/2`) is
+   hidden from the list. `/multiplayer?room=CODE` auto-fills and auto-joins once.
+   A guest **adopts the room's disc, drive and turn**: its own `?game=` is only
+   used before it joins.
+6. **Turn.** In a ghost room the host picks **TURN: HOST** or **TURN: GUEST** —
+   the seat that drives *this* run. Only the host may change it, and only before
+   the grid locks; the guest's selector is read-only.
+7. **Teams.** The four team slots are Solvalou, Pac Racing Club, Micro Mouse
+   Mappy and Dig Racing Team. Each player edits only their own slot; P1 is the
+   host, P2 is the guest.
+8. **READY.** Both drivers must press READY. One READY only moves that slot to
+   `READY`; nothing boots.
+9. **Plan.** When the second READY lands, the server rolls the plan once from the
+   room's disc and broadcasts the same `race` payload to both sockets — including
+   `drive` and `turn`. No browser rolls its own plan.
+10. **Countdown.** Both tabs show the 3-2-1-GO overlay with the same course and
+    the same car line(s) — `SHARED CAR // BOTH PADS DRIVE` in a live room,
+    `DRIVER: HOST` / `DRIVER: GUEST` in a ghost room — then the shell loads
+    `/play-net` in the frame.
+11. **Leave / drop.** LEAVING resets READY on both sides and keeps the room if
+    one player is still in it. A dropped socket is cleaned up by the `/mp`
+    heartbeat (see below); a full room goes back to `1/2` and is listed again.
+
+## Changing the disc after a room exists
+
+The host can swap the disc while the room is still in the lobby — the room
+card's second selector, labelled **HOST // CHANGE DISC**. The guest's copy is
+disabled and its title reads `Only the host can change the disc.`
+
+- The message is `{type:'setgame', game}`; the server whitelists the key against
+  the manifest (`Unknown disc`) and rejects it if the seat is not the host
+  (`Only the host can change the disc`) or if the plan already rolled (`Disc
+  cannot change after the grid locks`).
+- A disc change clears the old `track`/`cars`, because a different disc has a
+  different course list and car list; the room is re-broadcast and re-listed, so
+  both seats repaint the disc row before anyone presses READY.
+- The room card always shows the room's disc and mode (`RAGE RACER // SHARED
+  CAR`), never the guest's local pick.
+
+| Surface | Behaviour | Where it is persisted |
+| --- | --- | --- |
+| Start-card **DISC** | picks the disc for a create; hint updates from `modeLabel` + `seatsLabel` | `localStorage['rr4.mp.game']` |
+| Start-card **DRIVE** | `LIVE` / `GHOST`, enabled for `rage`/`ridge` only; also switches the hint | `localStorage['rr4.mp.drive']` |
+| Deep link `?game=` | preselects the DISC; beats the stored value | URL |
+| Deep link `?drive=ghost&turn=guest` | preselects DRIVE (and the first TURN) for a create | URL |
+| Invite link | `/multiplayer?room=CODE&game=<room disc>&drive=<room drive>` (+`&turn=` in ghost) | URL |
+| Room-card **HOST // CHANGE DISC** | `setgame`, host only, lobby only | room state on the server |
+| Room-card **HOST // CHANGE DRIVE** | `drive`, host only, lobby only | room state on the server |
+| Room-card **TURN** row | `turn`, host only, lobby only; guest read-only | room state on the server |
+| Handoff | `&game=r4\|rage\|ridge[&mpGhost=ghost&mpTurn=host\|guest&mpLiveGhost=1]` on `/play-net` | URL (shell `rr4-race` or standalone navigation) |
+| Rematch | `&game=`, `&drive=ghost` and the flipped `&turn=` kept on `/multiplayer?room=…&host=…&embedded=1` and on the next handoff | URL |
+
+## Changing DRIVE and TURN before the lock
+
+The room card's second selector row carries the two ghost controls. Both are
+**host-only** and only editable while the room is still in the lobby:
+
+- **DRIVE** — `{type:'drive', drive}` with `live` or `ghost`, whitelisted on the
+  server. A `rage`/`ridge` room can swap between the shared car and turn-based
+  Time Trial until READY.
+- **TURN** — `{type:'turn', turn}` with `host` or `guest`. This is the seat that
+  drives *this* run; it appears (and matters) only in a ghost room.
+- Errors are explicit: `Only the host can change DRIVE/TURN` for a guest,
+  `Grid is locked` after the second READY, `Unknown drive mode` / `Unknown turn`
+  for anything outside the whitelist.
+- Neither message touches the rolled plan, so `track`/`cars` stay and the plan is
+  still rolled once when the grid locks. Both values are re-broadcast to both
+  seats and to the rooms list (`drive` only — the turn is private to the room).
+- **The server never flips the turn.** The game page flips it on rematch and
+  passes it back through the lounge URL
+  (`&drive=ghost&turn=<next>`), so a second run alternates cleanly and a reload
+  cannot fall back to a live shared car.
+
+## The race plan
+
+The plan is server-authoritative and manifest-driven. It is one course and one
+preset car per driver (R4) or one course and one car slot for the shared car
+(Rage/Ridge):
+
+```js
+// _server/src/server.js — both READY (room.game is a manifest key)
+const seed = Date.now();
+const g = mpGame(room.game);          // entry from _server/public/mp-games.json
+const trackIndex = Math.abs(seed + room.code.charCodeAt(0)) % g.tracks.length;
+room.raceId = room.code + '-' + seed.toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+room.trackIndex = trackIndex;
+room.track = g.tracks[trackIndex].name;
+room.cars = room.players.map((p, i) => {
+  const carIndex = Math.abs((seed >> (i * 3)) + i) % g.cars.length;
+  return {
+    id: p.id, name: p.name, role: p.id === room.host ? 'host' : 'guest',
+    team: p.team || MP_TEAMS[(seed + i) % MP_TEAMS.length],
+    car: g.cars[carIndex].name, carIndex,
+  };
+});
+```
+
+The broadcast `race` payload keeps every existing field (`code`, `raceId`,
+`track`, `trackIndex`, `cars`) and adds `game`, `mode`, `guestPlayerIndex`,
+`drive`, `turn`, `trackSelection`, `trackCount` and `carCount`, so a client never
+has to guess which disc's list an index came from — or which mode and driver the
+room agreed on.
+
+### Courses per disc (`mpTrackIndex`)
+
+R4's eight courses are in **in-game VS Battle menu order**. The R4 macro presses
+Right once per index from the first entry, so index 8 would wrap to Helter
+Skelter. Rage Racer and Ridge Racer 1994 have no automatic course press: the
+number is the manifest entry, and the host picks the course by hand.
+
+| Disc | Index | Course |
+| --- | --- | --- |
+| `r4` | 0 | Helter Skelter |
+| `r4` | 1 | Wonderhill |
+| `r4` | 2 | Edge of the Earth |
+| `r4` | 3 | Out of Blue |
+| `r4` | 4 | Phantomile |
+| `r4` | 5 | Brightest Nite |
+| `r4` | 6 | Heaven and Hell |
+| `r4` | 7 | Shooting Hoops |
+| `rage` | 0 | Mythical Coast |
+| `rage` | 1 | Over Pass City |
+| `rage` | 2 | Lakeside Gate |
+| `rage` | 3 | The Extreme Oval |
+| `ridge` | 0 | Seaside Route 765 |
+
+Rage Racer is a four-course disc; Ridge Racer 1994 has one course. Do not read
+the 17 CD tracks on the Rage disc or the 14 on the Ridge disc as courses.
+
+### Cars (`mpCarHost`, `mpCarGuest`)
+
+**R4** has eight preset cars in car-select order: `D1`, `D2`, `D3`, `D4`, `G1`,
+`G2`, `G3`, `G4` (index `0–7`). `carIndex` is the number of Right presses the
+macro makes on that driver's car-select screen.
+
+**Rage Racer** has four car slots (`CAR 1`–`CAR 4` in the manifest) and **Ridge
+Racer 1994** has four car slots named `Solvalou`, `Mappy`, `Bosconian`,
+`Nebulasray`. Those are plan slots, not a car-select order: the host still picks
+the actual car in the disc's own menu. With one shared car there is only one car
+line in the overlay (`SHARED // <car>`); `mpCarGuest` is carried but the guest
+drives the host's car.
+
+### Race identity
+
+| Field | Shape | Used for |
+| --- | --- | --- |
+| `game` | `r4` / `rage` / `ridge` | which manifest entry supplied the plan, and the relay room prefix |
+| `code` | 4 characters, e.g. `SJKE` | lobby room code and the relay room name suffix |
+| `raceId` | `CODE-<base36 time>-<4 random>`, e.g. `SJKE-mw43adyz-qyde` | EmulatorJS room password, and the lantern both browsers compare |
+| `trackIndex` | `0–7` R4, `0–3` Rage, `0` Ridge | course position |
+| `cars[].carIndex` | `0–7` R4, `0–3` Rage/Ridge | car slot; the R4 macro's Right count |
+| `role` | `host` or `guest` | which side runs the macro (or the manual start) and which side is gated |
+
+## The handoff URL
+
+The lounge posts `rr4-race` to the shell; the shell (which owns the iframe)
+loads the game page. The URL now ends with the room's disc:
+
+```text
+/play-net?embedded=1&threads=0&mpRole=host&mpRoom=SJKE
+          &mpRace=SJKE-mw43adyz-qyde&mpTrackIndex=6&mpCarHost=5&mpCarGuest=0
+          &game=r4
+```
+
+| Parameter | Values | What `play-net.js` does with it |
+| --- | --- | --- |
+| `embedded=1` | `0` / `1` | keeps the page inside the shell frame (no second ENTER gate or audio element) |
+| `threads=0` | `0` / `1` | forces the non-threaded PCSX core (the shell frame is only cross-origin isolated on loopback/HTTPS, and `threads=0` is what the handoff uses) |
+| `mpRole` | `host` / `guest` | host runs the macro (or the manual start); guest joins and, on R4 only, gates input |
+| `mpRoom` | 4 characters | uppercased and stripped to `A–Z0–9`; becomes `R4-<code>`, `RAGE-<code>` or `RIDGE-<code>` |
+| `mpRace` | up to 48 `A–Z0–9-` | relay room password; empty means an open room |
+| `mpTrackIndex` | `0–7` / `0–3` / `0` | course position; clamped to that disc's list, random when absent |
+| `mpCarHost` | `0–7` / `0–3` | host car slot; clamped, random when absent |
+| `mpCarGuest` | `0–7` / `0–3` | guest car slot; clamped, random when absent (shared car: informational) |
+| `game` | `r4` / `rage` / `ridge` | selects the manifest entry: tracks, cars, `mode`, `macro`, `guestPlayerIndex`, room prefix |
+| `mpGhost` | `ghost` / `live` / absent | ghost rooms send `ghost`; `live` rooms send `live` or omit it. Absent/`live` leaves the ghost engine completely off; R4 ignores it |
+| `mpTurn` | `host` / `guest` | ghost rooms only: this run's driver (and therefore whose tape is replayed). Anything else reads as `host` |
+| `mpLiveGhost` | `1` / `0` / absent | ghost rooms only: `1` (what the lounge appends) also draws the rival tape on track in Ridge's race screen and Rage Grand Prix; `0`/absent leaves the replay-only engine. Ignored for R4 and in `live` rooms |
+
+Every existing `mp*` name is unchanged — `play-net.js` still parses exactly
+these, and `mp-ws-probe.mjs` still passes 22/22 with no `game` at all. A ghost
+room appends `&mpGhost=ghost&mpTurn=host|guest&mpLiveGhost=1`; a live room appends
+`&mpGhost=live` or nothing, and never `mpTurn`/`mpLiveGhost`. An unknown or missing
+`game` falls back to the manifest default (`r4`) on both the server and the page.
+
+Outside the shell, `/multiplayer` navigates the tab directly to
+`/play-net?threads=0&mpRole=…&mpRoom=…&mpRace=…&mpTrackIndex=…&mpCarHost=…&mpCarGuest=…&game=…`
+with the same plan; the [standalone section](#standalone-lounge-no-shell) lists
+what changes without the shell.
+
+Other useful `/play-net` parameters are unchanged: `?game=r4|rage|ridge`,
+`?bios=hle`, `?netserver=http://host:3010`, `?cache=0`, `?debug=1`.
+
+## Macro: `auto` vs `manual`
+
+`macro` in the manifest decides whether the host walks menus or starts a race by
+hand. There are only two values, and they are not interchangeable.
+
+| Value | Discs | What the host does | What the guest does |
+| --- | --- | --- | --- |
+| `auto` (`macroVerified: true`) | R4 | Runs the calibrated VS Battle macro: RAM-probed main menu → VS Battle → car P1 → car P2 → course → Start, then signals `race-live` ~20 s after the course confirm | Core frozen; input dropped until `race-live` |
+| `manual` | Rage, Ridge | No menu walk and no RAM read: sets stage `macro:manual`, signals `race-live` immediately, logs `MANUAL 2P - host starts a single-player race; both pads drive.`, then the **host starts the disc's normal single-player race by hand** | Live from boot: no gate, both pads can drive |
+
+In a **ghost** room the stage log reads `GHOST TURN-BASED - host starts a solo
+run; DRIVER: HOST|GUEST.` and only one pad is live, because the host installs the
+turn gate instead of the shared-car remap. The guest still boots `raceLive` at
+boot; the gate is host-side. If the handoff carried `mpLiveGhost=1` (the default),
+the rival tape is also drawn on track on the Ridge race screen and in Rage Grand
+Prix while you drive. See [Ghost replay](/multiplayer/ghost-run).
+
+On a manual disc the stage log shows `MANUAL`, not an R4 menu stage, and the
+guest chip reads `GUEST P2 SHARED` before the host starts and `GUEST P2 LIVE`
+after `race-live`. Claiming P2 is "locked" on Rage/Ridge would be wrong — no
+macro is running. `window.__R4NET.mpRun()` stays a no-op on those discs; it
+never re-walks R4 menus.
+
+Everything below this line is the **R4** macro, and only R4.
+
+## Host menu macro (R4)
+
+The host does not click through R4's menus. `play-net.js` drives the emulated pad
+with `EJS_emulator.gameManager.functions.simulateInput(player, index, value)` —
+the core-level input call, not the DOM keyboard. **Player 2 presses must use
+player index `1`.**
+
+### Room first
+
+1. The host waits for the emulator to start, then calls
+   `hostRoom('R4-<code>', 2, raceId)`.
+2. It retries up to 15 times, polling about 9 s per attempt for
+   `owner === true`.
+3. The guest polls the relay `/list` up to 45 times (about 40 s), matches the
+   exact room name `R4-<code>` with a free slot, and calls
+   `joinRoom(sessionId, 'R4-<code>', 2, raceId)`.
+4. The macro only starts when the host sees **2 players and an open data
+   channel**. Until then the stage log shows `wait:<n>p`.
+
+The visible stage log (`AUTO RACE n: <stage>`) is the only debugging channel a
+player has; it is mirrored to the guest as `HOST STAGE: <stage>` messages over
+the netplay data channel.
+
+### RAM-probe menu verification
+
+R4 keeps the current menu/list selection in one byte. The macro reads it through
+the WASM heap instead of trusting a fixed delay:
+
+| Address | Meaning |
+| --- | --- |
+| `0x800AC801` | current main-menu selection: `0` Grand Prix, `1` Time Attack, `2` VS Battle; the car and course screens reuse the byte for their own lists |
+| `0x800A2180` | menu label table base; the code scans the heap for `GRAND PRIX`, `WELCOME` and `VS BATTLE` at ±32 bytes to locate it |
+
+`ensureMainMenu()` presses **Start** (`index 3`) until the byte reads `0–6`,
+then proves the read is live: **Down** (`5`) once, re-read (must be `sel + 1`),
+**Up** (`4`) to restore. Only then does it walk to VS Battle (`2`) and set
+`menuVerified = true`. If the probe never answers, it falls back to two Down
+presses and continues — the stage log shows `menu:unverified`.
+
+### Pad-ack pacing
+
+The car carousel can swallow a `Right` while the host is also encoding the
+WebRTC stream, which used to select the car one or two steps off. The macro now
+reads the pad-ack byte at `0x800ABD9F` before the car presses and keeps pressing
+until it has moved exactly `carIndex` steps. That byte does not track the course
+list, so the course presses fall back to exact fixed pacing (and the stage log
+records `presses`/`delta` per stage).
+
+### Input sequence
+
+All holds/settles are milliseconds. `P` is the EmulatorJS player index; the host
+car uses `0`, the guest car uses `1`.
+
+| Stage | Inputs |
+| --- | --- |
+| `macro:start` | unlock audio, announce the plan |
+| `menu:boot` → `menu:ready` | Start (`3`) ×N until the RAM probe answers; Down/Up probe |
+| `menu:vs` | Down ×2 to VS Battle, confirm (`8`) |
+| `car:p1` | wait out the ~7 s VS splash, then Right (`7`) × `mpCarHost` |
+| `car:p1:data` | confirm (`8`) to reveal car data |
+| `car:p1:atmt` | confirm (`8`) to reach the AT/MT menu |
+| `car:p2` | confirm (`8`) to choose AT, then P2 screen with **player index 1** |
+| `car:p2:ok` | Right (`7`) × `mpCarGuest` on player index `1` |
+| `car:p2:data`, `car:p2:atmt` | confirm (`8`) twice on player index `1` |
+| `course` | Right (`7`) × `mpTrackIndex`, then hold ~1.5 s |
+| `course:locked` | send `race-start` to the guest with the plan |
+| `race:starting` → `race:live` | confirm (`8`) starts the race; `race-live` is sent 20 s after the course confirm |
+
+`race-start` and `race-live` are `r4-mp` messages on the netplay data channel.
+The guest logs both. The macro harness also measures the final frame: the race
+capture must not be the yellow car/course menu (`yellowFrac` 0).
+
+### Guest input gating (R4 only)
+
+The guest core is frozen and only supplies P2 input, so an early pad press would
+move the host's car-select cursor. `installGuestGate()` wraps
+`gameManager.simulateInput` on the guest and drops every event until
+`race-live` arrives:
+
+```js
+gm.simulateInput = (player, index, value) => {
+  if (!mp.raceLive) { mp.blockedGuestInputs += 1; return undefined; }
+  return original(player, index, value);
+};
+```
+
+The host core is always live (`mp.raceLive = true` at macro start). The guest
+counters are visible as `window.__R4MP.blockedGuestInputs` and
+`window.__R4MP.raceLive`; `window.__R4NET.planText()` prints the rolled plan and
+`window.__R4NET.readMenuSel()` reads the host's menu byte. The two-browser
+harness records the post-`race-live` guest press on the host as
+`player 1, index 0, value 1` and counts zero `player 0` records — the guest pad
+reaches the core as P2, not P1. Once live, each event is sent **once**: the
+Socket.IO `sync-control` copy is suppressed while the WebRTC data channel is open,
+so one press + release records two host records (down/up) instead of four. A
+**manual** `/play-net` join (opened from the panel with no `mpRole`/`mpRoom`) is
+not gated, because no host macro runs.
+
+On Rage/Ridge (`mode === 'shared-car'`) there is no guest gate at all: the guest
+sets `mp.raceLive = true` and `mp.manualJoin = true` at boot so both pads can
+drive from the first frame. In a **ghost** room the guest does the same, but the
+host wraps `gameManager.functions.simulateInput` and keeps only this run's pad
+(turn gate) — the shared-car remap is not installed there.
+
+### What the guest sees while waiting
+
+The panel collapses on join, so the small netplay chip in the game corner is the
+guest's status display. It carries the seat, the lock state and the host's menu
+stage, for example `GUEST P2 LOCKED - R4-2GHY - CAR P2`, then flips to
+`GUEST P2 LIVE - … - RACE` when the host signals the grid is live. On Rage/Ridge
+the same chip reads `GUEST P2 SHARED - RAGE-2GHY`, then `GUEST P2 LIVE` once the
+host starts the manual race; in a **ghost** room the chip is prefixed `GHOST`
+(`GHOST - HOST P1 - RIDGE-GHST`) and the panel's GHOST block adds the status, the
+driver seat, the rival tape length and **WATCH RIVAL**. The netplay panel's role
+pill shows the same state, and every host stage is also logged in the panel
+(`HOST STAGE: car:p2`).
+
+## Shared car and ghost replay (Rage Racer, Ridge Racer 1994)
+
+Both discs are single-player on disc: there is no P2 car and no split screen.
+The lounge still gives you a two-person session, in one of two **DRIVE** modes:
+
+- **`live` (shared car)** — the guest pad is merged into the host's **one** car
+  and both people drive it at the same time.
+- **`ghost` (ghost replay, sequential)** — turn-based Time Trial: one driver per
+  run, and the game's own replay afterwards plays the other seat's tape.
+
+### `drive: live` — the shared car
+
+- The host starts the disc's normal single-player race by hand. There is no menu
+  macro and no RAM address is claimed for either disc.
+- The guest's remote pad arrives on the host through the netplay client's
+  `gameManager.functions.simulateInput` (the cwrap function — **not**
+  `gameManager.simulateInput`, which is the EJS-side method the guest gate wraps),
+  and that call is wrapped to fold player `1` onto player `0`:
+
+```js
+// play-net.js — installSharedCarRemap(), host, mode === 'shared-car'
+const original = gm.functions.simulateInput;
+const guest = Number(mp.guestPlayerIndex) === 0 ? 0 : 1;   // 0 for Rage/Ridge
+const wrapped = function (player, index, value) {
+  let target = player;
+  if (guest !== 1 && Number(player) === 1) {
+    target = guest;                       // fold the guest pad onto the host car
+    mp.remappedInputs += 1;
+  }
+  return original.call(this, target, index, value);
+};
+wrapped.__rr4CoopWrapped = true;
+gm.functions.simulateInput = wrapped;
+mp.coopRemap = true;
+```
+
+- The wrapper is marked `__rr4CoopWrapped` so a retry cannot double-wrap it, and
+  the install poll (every 500 ms, capped at 600 tries ≈ 5 min) only exists until
+  `gameManager.functions` appears.
+- Diagnostics: `window.__R4MP.mode`, `.macro`, `.coopRemap` and
+  `.remappedInputs`; `window.__R4NET.sharedCarRemap()` forces one install
+  attempt. The stage log prints `SHARED CAR input remap: player 1 -> player 0
+  (Rage Racer). Both pads drive one car.`
+- No split screen, no second car, no automatic macro, and no telemetry address is
+  claimed for either disc.
+
+### `drive: ghost` — turn-based Time Trial
+
+- The same room, disc, plan and manual start; the difference is the **TURN**
+  selector (`host` / `guest`, host-only before the lock) and a **host-side turn
+  gate**.
+- The gate wraps `gameManager.functions.simulateInput` (the same cwrap the
+  shared-car remap uses) and keeps exactly one pad: `turn: host` keeps player 0
+  and drops player 1; `turn: guest` keeps player 1 remapped to player 0 and drops
+  player 0. **The shared-car remap is not installed in ghost mode.**
+- The disc's own recorder tapes the run. At the finish the native REPLAY screen
+  plays the **rival seat's stored tape** (Ridge: stage it in a zeroed BSS run and
+  repoint `0x80080434`, 161-record cap; Rage: arm `g_RacePhase`/lap so the RACE
+  frame enters scene 17 itself), and the tapes live in IndexedDB `rr4-ghost`
+  under `<room>:<game>`.
+- **A live ghost is also drawn while you race** (Route B, `mpLiveGhost=1`, which
+  the lounge appends to every ghost handoff and rematch): the rival tape is applied
+  to a spare rival car slot every frame on **Ridge's race screen** and in **Rage
+  Grand Prix**, so a second car is rendered on track — no physics, no collision.
+  Rage **Time Attack** never draws the rival slots and stays replay-only
+  (`GHOST // REPLAY (draw-path-unverified)`). The panel gains a **LIVE** ON/OFF row.
+- Rematch **flips the turn** and keeps `drive=ghost`, so the second run gives the
+  other seat a ghost.
+- Honest limits: the live ghost is **drawn, not simulated** (a tape pose in a rival
+  slot: no collision, no AI, no second physics car); Rage TA is replay-only. The
+  engine is `harness-verified` — 36/36 live ghost (`ghost rendered (in-game)` under
+  the harness), 40/40 native replay, 36/36 lounge — with synthetic short tapes; no
+  human lap is recorded.
+
+Full product page, RAM addresses and troubleshooting:
+[Ghost replay (Rage Racer & Ridge Racer 1994)](/multiplayer/ghost-run).
+
+Full live-mode page: [Shared car](/multiplayer/shared-car).
+
+## Rematch in one click
+
+While a lounge handoff is live, the game page shows a **REMATCH** chip next to the
+netplay status chip. It is per seat: **each player clicks it on their own tab**.
+It posts `{type:'rr4-rematch', code, role, game[, drive, turn]}` to the shell,
+which reloads
+`/multiplayer?room=<code>&host=1|0&embedded=1&game=<disc>[&drive=ghost&turn=<next>]`;
+a standalone tab navigates itself and adds the same parameters. The disc
+therefore survives a rematch — a Rage room comes back as a Rage room.
+
+- The **host** recreates the same room code, disc and drive mode. The server
+  reclaims a code whose old room only holds dead sockets (the tabs already moved
+  to `/play-net`), so the rematch keeps `R4-`/`RAGE-`/`RIDGE-<code>`.
+- In a **ghost** room the rematch also flips **TURN** (`host` ↔ `guest`) and
+  carries `drive=ghost`, so the other seat drives the second run. The payload is
+  only extended in ghost mode; a live/R4 rematch stays byte-identical to before.
+- The **guest** auto-retries `join` every 2 s until that room exists (the host may
+  be a second behind), then both press READY and get a fresh plan and `raceId`.
+- The plan, course and cars are re-rolled by the server on the second READY; the
+  room code and the disc stay the same. The host may still `setgame`,
+  `drive`/`turn` again before the new grid locks.
+
+<details>
+<summary>Test coverage</summary>
+
+`_server/test-mp-lobby-ui.mjs` drives the real shell: it posts the rematch
+message to both windows, asserts the `host=1`/`host=0` reload, the same room code
+on both sides (host auto-create, guest retry-join) and that a second READY starts
+a second `/play-net` handoff. Those are the R01–R05 checks in
+`_runtime/mp-lobby-ui.json`. `_server/test-mp-games-ui.mjs` repeats the flow on
+RAGE and on RIDGE and asserts the handoff URL keeps `game=` and the overlay is a
+single shared car. `_server/test-mp-ghost-lobby.mjs` does the ghost variant: the
+reload carries `drive=ghost` and the **flipped** `turn`, the host recreates with
+those values, the guest adopts them, and the second handoff carries
+`mpTurn=host`.
+
+</details>
+
+## Standalone lounge (no shell)
+
+`/multiplayer` also works as a direct tab, outside the cabinet frame. It creates
+the room, rolls the same plan, and — since 2026-11-05 — carries the whole plan in
+its own navigation fallback:
+
+```text
+/play-net?threads=0&mpRole=host&mpRoom=SJKE&mpRace=SJKE-…
+          &mpTrackIndex=6&mpCarHost=5&mpCarGuest=0&game=r4
+```
+
+Keep those parameters, including `game=`, in that fallback. If they are dropped,
+`play-net.js` **rerolls** a fresh course and car pair for that tab (`intParam`
+rolls when the parameter is absent) and the two browsers can disagree about a
+plan the lounge already announced — or about the disc. In a ghost room the
+fallback also carries `&mpGhost=ghost&mpTurn=<turn>`; without them the tab boots a
+live shared car instead of the turn-based session.
+
+What the standalone tab still does not have:
+
+- no shell top bar and no parent audio element, so the cabinet soundtrack stops
+  and `/play-net` shows its own **CLICK TO RACE** sound gate;
+- no `embedded=1`, so the page renders its own header instead of the shell's
+  single bar;
+- no way back to the hub except the browser Back button.
+
+It is still the right entry for a quick local race or for debugging the relay;
+the shell path (`/` → ENTER → 2P LOUNGE) is the normal one.
+
+## `/mp` heartbeat and stale rooms
+
+The lobby socket is a plain WebSocket on the same port as the page
+(`ws://<host>:8080/mp`), not the 3010 relay.
+
+- The server pings every **20 s** and terminates sockets that did not answer
+  (`isAlive`). Termination runs the close handler: the player leaves the room,
+  a remaining guest is promoted to host, READY resets, and an empty room is
+  deleted.
+- Rooms idle for more than **5 minutes** whose sockets are all dead are dropped
+  from the list (`mp room <code> dropped (stale)` in the server log).
+- A browser that loses the socket reconnects after 1.5 s and re-sends `join` for
+  its room; the UI disables READY while the socket is down.
+
+A room that lingers in **OPEN ROOMS** after both tabs closed is heartbeat
+housekeeping, not a live race. Joining it either works (the host is still there)
+or returns `Room not found`.
+
+## Evidence
+
+| Area | Harness | Result | Scope |
+| --- | --- | --- | --- |
+| Multi-disc manifest + `/mp` plans | `_server/mp-games-probe.mjs` → `_runtime/mp-games.json` | **16/16** | throwaway cabinet: the `/mp-games.json` endpoint and game data, create defaults to `r4`, Rage and Ridge rolls, `setgame` host-only before READY, guest rejected, after-lock rejected, unknown key rejected, guest adopts the room's disc, R4 legacy payload shape unchanged, cleanup. Protocol only — no emulator, no browser |
+| Multi-disc lounge UI + handoff | `_server/test-mp-games-ui.mjs` → `_runtime/mp-games-ui.json` | **32/32** | two browser contexts on a spawned `:8093`: DISC selector and hint, room card, room-list disc badge, `setgame`, RAGE and RIDGE create/join/READY, both handoff URLs carrying `game=rage` / `game=ridge`, shared-car overlay with one car line, selector persistence, deep link, mobile layout. The `/play-net` document is held, so no emulator boot |
+| Ghost lounge (DRIVE / TURN) | `_server/test-mp-ghost-lobby.mjs` → `_runtime/mp-ghost-lobby.json` | **36/36** | two browser contexts on its own spawned cabinet: R4 keeps LIVE with the drive buttons disabled and no ghost rows, RIDGE `LIVE`/`GHOST` and `localStorage['rr4.mp.drive']`, the `DRIVE GHOST // TURN-BASED TIME TRIAL` card with a host-only TURN row (guest read-only), the rooms-list `GHOST` badge, `DRIVER: GUEST` overlay, handoff `mpGhost=ghost&mpTurn=guest` on both seats with the same plan, a live room handing off `mpGhost=live` with no `mpTurn` and `BOTH PADS DRIVE`, 390×844 without overflow, and a rematch that flips to `turn=host` and keeps `drive=ghost`. `/play-net` held, so no core boots and no tape swap |
+| Ghost replay engine | `_server/test-mp-ghost-replay.mjs` → `_runtime/mp-ghost-replay.json` | **40/40** | **host-only, synthetic tapes**: Ridge and Rage native tape capture/swap, the replay screen driven by the tape (Ridge 54/54 then 322/322 pose samples; Rage 107/107), the turn gate both ways, the IndexedDB round trip, `mpGhost=live` off and the R4 path untouched. `ghost replay (sequential)` |
+| Live ghost (Route B) | `_server/test-mp-live-ghost.mjs` → `_runtime/mp-live-ghost.json` | **36/36** | **host-only, one real core per disc, synthetic tapes**, own `:8088` cabinet: `mpLiveGhost=1` installs the stub and repoints one shipped word only inside the race; the ghost slot pose equals the tape 16/16 on **Rage GP** and **Ridge's race screen**; the A/B frame delta beats the measured noise floor (Rage 1118 vs 0 cells, Ridge 846 vs 83); the player still drives; the stub survives ~10 s; the turn gate is unchanged; A keeps recording in the same run; `mpLiveGhost` absent, `mpGhost=live` and R4 all keep B off; Rage **TA** is `draw-path-unverified` and falls back to A. **Drawn, not simulated; no human lap** |
+| Rage shared-car host path | `_server/test-mp-shared-car.mjs` → `_runtime/mp-shared-car.json` | **14/14** | **host-only, one browser, no guest**: the real Rage core boots, `mode=shared-car` / `macro=manual`, the plan clamps to 4 courses / 4 car slots, the relay room is `RAGE-TEST`, the brand says `2P SHARED`, `mpRun()` enters `macro:manual` with no R4 menu/car/course stage, and the `player 1 → 0` remap installs and counts a press. No live drive |
+| Lounge UI + handoff (R4) | `_server/test-mp-lobby-ui.mjs` → `_runtime/mp-lobby-ui.json` | **33/33** | two browser contexts on `http://localhost:8080`; identical plan and identical `/play-net?…mp*` URL; the `/play-net` document is held by request interception, so the emulator boot is not covered |
+| Raw `/mp` transport | `_server/mp-ws-probe.mjs` → `_runtime/mp-lobby-ws.json` | **22/22** | `ws://127.0.0.1:8080/mp` on the restarted server: hello, create, join, roles, both-ready, race payload, app-level `pong`, server heartbeat ping, cleanup. Sends no `game`, so it pins the pre-multi-disc shape |
+| Host macro | `_server/mp-macro-test.mjs` → `_runtime/mp-macro-evidence.json` | **6/6** | **host-only** on the real R4 disc: RAM probe verified, VS Battle → car P1 → car P2 → course, reaches `race:live` without a page error, and the final frame is the race (yellow menu fraction 0) |
+| Two-browser race with a guest driving P2 | `_server/test-mp-race-e2e.mjs` → `_runtime/mp-race-e2e.json` | **40/40** | `harness-verified two-browser` (two contexts on one host): real emulator in both tabs, same plan as the lounge roll, macro reaches `race:live`, `frames.race.raceLike === true` (`yellowPct` 0 on the current artifact), guest video `currentTime` advances, guest pad recorded on the host as `player 1, index 0, value 1` with zero player-0 records, and the guest chip flips from `GUEST P2 LOCKED` to `GUEST P2 LIVE` |
+| `/mp` heartbeat, promotion, stale rooms | `_server/mp-heartbeat-probe.mjs 8095` | **10/10**, console only | throwaway `:8095` instance; `:8080` was restarted on 2026-11-06 and serves the same build (`mp-ws-probe.mjs` sees `pong` + a server ping there) |
+
+The macro (6/6) and race (40/40) runs are **R4-only**. They are the reason R4 is
+labelled `harness-verified host-only` / `harness-verified two-browser`. Rage
+Racer and Ridge Racer 1994 are `netplay transport; in-game mode unverified`:
+the manifest, the room, the plan, the handoff URL, the shared-car overlay, the
+manual stage and the input remap install are proved above (the remap on the real
+Rage core, host-only), but nobody has driven a shared car in-game under a
+harness. Never promote the R4 numbers to the other two discs.
+
+Ghost rooms now have **two scoped labels**. The post-race native replay is
+**`harness-verified ghost replay (sequential, Ridge + Rage)`** — 40/40 for the
+engine (native tape capture/swap, pose equals tape, rendered frame changes, the
+Rage scene-12 finish arm → scene 17, the turn gate, IndexedDB) and 36/36 for the
+lounge (DRIVE/TURN, handoff, rematch flip). The live ghost is
+**`harness-verified ghost rendered (in-game)`** — 36/36 (`test-mp-live-ghost.mjs`)
+for **Ridge's race screen** and **Rage Grand Prix** only: a stub in PSX RAM plus
+one repointed shipped word, the tape pose on a spare rival slot, pose equals tape
+16/16, an A/B delta clear of the noise floor, the player still driving, and the
+turn gate untouched. **Rage Time Attack stays `ghost replay (sequential)`**
+(`draw-path-unverified`). The live ghost is **drawn, not simulated** — no
+collision, no AI, no second physics car — the tapes are synthetic, no human lap
+is recorded, and it is host-only evidence. Never write "both cars on track" or
+"collision".
+
+**Race-frame and screenshot proof (R4).** The 40/40 run asserts the frame metrics
+above and writes `_runtime/mp-race-e2e-host-race.png` and
+`-guest-race.png` at `race:live + 18 s` (the host WebGL canvas and the guest
+host-stream video, both decoded to 64×48 and measured), plus the final
+`-host`/`-guest` split-screen pair, `-host-go`/`-guest-go`,
+`-guest-car-p1`/`-guest-car-p2`, `-host-course`, `-host-loading` and
+`-host-live6s`/`-guest-live6s`. A metric-only pass is not enough: the host frame
+must be race-like, not a yellow menu, and the course reference is
+`yellowPct 55.6` against `0.1` for the race. The macro's own screenshots are the
+data proof for the plan: `_runtime/mp-macro-06-car-p1-data.png` shows `PRESET G2`
+for `mpCarHost=5`, `_runtime/mp-macro-10-car-p2-data.png` shows `PRESET D3` for
+`mpCarGuest=2`, and `_runtime/mp-macro-13-course-locked.png` shows `Out of blue`.
+
+The multi-disc UI harness writes `_runtime/mp-games-lounge-host.png`,
+`_runtime/mp-games-lounge-mobile.png`, `_runtime/mp-games-grid-rage.png` and
+`_runtime/mp-games-grid-ridge.png`; the two grid captures show the shared-car
+overlay (`SHARED CAR // BOTH PADS DRIVE`), the rolled course and one
+`SHARED // <car>` line.
+
+The ghost harnesses add `_runtime/mp-ghost-lobby-host.png`,
+`-mobile.png` and `-overlay.png` (the DRIVE/TURN card and the `DRIVER:` overlay)
+plus `_runtime/mp-ghost-ridge-replay.png`, `-replay-b.png` and
+`_runtime/mp-ghost-rage-replay.png`, `-frozen-a/b.png` (the native replay playing
+the staged and then the swapped tape), and Route B's
+`_runtime/mp-live-ghost-{rage,ridge}-{off,on}.png` + `mp-live-ghost-a-replay.png`
+(the live ghost on/off pair on each disc, plus the A-only regression).
+
+Car presses are paced against the pad-ack byte `0x800ABD9F`: the macro retries
+`Right` until exactly `carIndex` steps land. The course list does not update that
+byte, so course presses use exact fixed pacing, and every stage record keeps
+`presses`/`delta`.
+
+Expected console noise, not a failure:
+
+- `[NETPLAY] No ICE servers configured. Connections will only work on LAN.`
+- the React #418 hydration warning on `/docs/introduction`.
+
+COOP/COEP is not noise: the server sends it on loopback/HTTPS only, so a
+plain-HTTP LAN origin has no COOP warning, while a secure origin isolates the
+shell and the embedded `/play` without complaint.
+
+Do not claim zero console errors. The labels for this area are
+`harness-verified` (lounge UI, raw `/mp`, multi-disc manifest/UI),
+`harness-verified host-only` (R4 macro), and `harness-verified two-browser` (the
+40/40 R4 race on one host), plus
+`harness-verified ghost replay (sequential, Ridge + Rage)` for the post-race
+replay, plus `harness-verified ghost rendered (in-game)` (36/36; Ridge race
+screen + Rage Grand Prix only, Rage TA replay-only) for the live ghost. Two
+physical machines remain unverified; guest audio is **absent** (the
+stream is video-only, so the guest hears the race through the host's speakers),
+and the guest proof is a host-stream P2 input test: guest-side gameplay parity
+(its own core) is not asserted. Measured stream numbers:
+[Performance and networking](/play/performance).
+
+## Verify the lounge
+
+```powershell
+# manifest + per-disc /mp plans (spawns its own throwaway cabinet)
+cd _server
+node mp-games-probe.mjs
+
+# two-browser multi-disc lounge UI + handoff (spawns :8093)
+node test-mp-games-ui.mjs
+
+# ghost mode: Ridge + Rage native tape capture/swap, turn gate (own cabinet)
+node test-mp-ghost-replay.mjs
+
+# ghost mode: live ghost stub + one word patch, A/B, flag matrix (own cabinet)
+node test-mp-live-ghost.mjs
+
+# ghost mode: two-browser DRIVE/TURN, handoff, rematch turn flip (own cabinet)
+node test-mp-ghost-lobby.mjs
+
+# lobby transport, from the workspace root
+node mp-ws-probe.mjs
+
+# two-browser lobby UI + handoff (needs the cabinet on :8080)
+node test-mp-lobby-ui.mjs
+
+# two-browser race with the real /play-net document, macro and guest P2
+node test-mp-race-e2e.mjs
+
+# host-only R4 macro (needs the disc, the BIOS and a free :8080)
+node mp-macro-test.mjs
+
+# every R4/2P suite above in one table (add --full for the two-browser race)
+node verify-mp.mjs
+node verify-mp.mjs --full
+```
+
+`verify-mp.mjs` stays the R4 2P wrapper; the two multi-disc harnesses are run
+separately.
+
+Then check the pages:
+
+- [Lobby panel](http://localhost:8080/multiplayer) — DISC, DRIVE, TURN, code,
+  teams, READY
+- [Shell](http://localhost:8080/) — ENTER, then 2P in the shell top bar
+- [This page](http://localhost:8080/docs/multiplayer/lounge)
+
+## Related
+
+- [Shared car](/multiplayer/shared-car) — Rage Racer and Ridge Racer 1994 (live
+  shared car)
+- [Ghost replay](/multiplayer/ghost-run) — Rage Racer and Ridge Racer 1994
+  (turn-based Time Trial)
+- [LAN multiplayer](/multiplayer/lan) — ports, firewall, one-subnet rules
+- [R4 2P LAN netplay](/multiplayer/r4-2p) — relay, WebRTC, limits
+- [Architecture](/engineering/architecture) — where `/mp` sits
+- [Troubleshooting](/reference/troubleshooting) — both READY, frozen menus,
+  heartbeat

@@ -1,0 +1,147 @@
+---
+title: Performance and networking
+description: Measured frame rate, input latency, boot time and netplay transport for the browser arcade, with the honest limits of each number.
+---
+
+Everything on this page was measured on the **reference desktop** (RTX 5090,
+Brave/Chrome 156 headless, warm IndexedDB, `http://127.0.0.1:8080`) unless a row
+says otherwise. Artifacts live in `_runtime/`; the long-form reports are
+`_server/EJS-PERFORMANCE.md`, `_runtime/analysis/01-core-perf.md` and
+`_runtime/analysis/03-netplay-webrtc.md`. Code defaults are in
+[Browser arcade](/play/browser).
+
+## `/play` — single player
+
+| Metric | Measured | Notes |
+| --- | --- | --- |
+| Emulated frames | **60.19–60.24 fps** | PCSX-Rearmed core frames, 18 × 1 s bins, 0 dropped |
+| Frame variance | CV **1.17–1.27 %** | every bin 58.8–61.9 fps |
+| Input → next core frame | p50 **12.7–14.1 ms**, p95 **34.0–38.1 ms** | in-page `KeyboardEvent`, quantised by the 60 Hz grid; the pre-change baseline band was p50 14.0 / p95 39.3 ms |
+| Warm boot | **1568–2475 ms** | nav → first emulated frame; cold is 2.8–4.7 s |
+| Canvas backing store | **960×720** | 3× the 320×240 core output; mobile is 378×283 |
+| `preserveDrawingBuffer` | **false** on plain HTTP | on only for an armed ghost recorder or AUTHENTIC on a secure context |
+| Fullscreen backing store | **1280×960** | capped at `min(100vw, 1280px, 100vh*4/3)`; was 1920×1080 |
+
+What changed to get there: the volume no longer resolves to 0 when the
+localStorage key is missing (0.70 default), `preserveDrawingBuffer` is off unless
+a ghost recording can start, the WebGL context is `alpha:false` /
+`premultipliedAlpha:false`, the fullscreen canvas is capped, the DLSS 5 grade is
+scoped to `#game`, QUALITY presets exist (`?quality=authentic|balanced|perf|auto`)
+and `navigator.storage.persist()` is requested once on secure contexts. None of
+those moved the frame rate off 60 on this box — they remove work (buffer copies,
+oversized backing store) and make the trade-offs selectable.
+
+Reproduce:
+
+```powershell
+cd _server
+node bench-native.mjs --url "http://127.0.0.1:8080/play?game=r4" --label after-play-perf
+node bench-native.mjs --url "http://127.0.0.1:8080/play?game=r4&quality=perf" --label after-play-perf
+```
+
+Artifacts: `_runtime/bench-native-after-play-perf*.json`. Phone numbers are still
+an **estimate** (30–45 fps mid-range, 60 high-end) derived from 4× CPU throttle;
+no phone run exists.
+
+## `/play-net` — host → guest stream
+
+| Metric | Bundle baseline | After tuning |
+| --- | --- | --- |
+| Host core | 60.15 fps | 60.15 fps |
+| Host encode | 29.29 fps | **59.08 fps** |
+| Host bitrate | 683 kbps | 920–2504 kbps |
+| Guest decoded | 29.29 fps | **57.44 fps** |
+| Guest presented (rVFC) | 28.86 fps | **42.25 fps** (41–55 across runs) |
+| Jitter buffer | 9.9 ms | 11.4 ms |
+| Packet loss / RTT | 0 % / 0 ms | 0 % / 0–1 ms |
+| Lounge two-tab boot | — | 5.95 s host / 6.17 s guest (cold) |
+
+The 30 fps ceiling was upstream of the transport: EmulatorJS 4.3's netplay
+init called `canvas.captureStream(30)`. A plain `captureStream(60)` of the real
+WebGL canvas delivered only **42.8 fps** because Chrome captures on canvas commit
+and the core's frame grid is bursty. The page now uses
+`canvas.captureStream(0)` + `track.requestFrame()` once per core frame, re-applies
+the 8 Mbps / 60 fps ceiling to every sender, and forces a keyframe on `race-live`,
+on join and on a freeze.
+
+Guest input is sent **once**: the Socket.IO `sync-control` copy is suppressed
+while the WebRTC data channel is open, so one press + release records two host
+records (down/up) instead of four. The relay copy is the fallback when the
+channel is not open.
+
+The netplay panel's **QUALITY** selector (AUTO / LOW / MED / HIGH = 1.5 Mbps/30,
+4/60, 8/60) is sent to the host as `{type:'rr4-quality'}`; AUTO starts on MED and
+drops to LOW after two bad 2 s windows and never climbs back. A 2 s `getStats()`
+line — fps, encoded/decoded frames, `qualityLimitationReason`, jitter, loss, RTT,
+bitrate — is written to the stage log and to `window.__R4NET.stats`; the
+collapsed chip carries a one-line input/debug summary.
+
+Screenshots of the panel and selector:
+`_runtime/netplay-panel-desktop-1440x900.png`,
+`_runtime/netplay-panel-mobile-390x844.png`.
+
+Reproduce:
+
+```powershell
+cd _server
+node bench-netplay.mjs --label after-netplay-tune --seconds 12
+node verify-mp.mjs --full
+```
+
+Artifacts: `_runtime/bench-netplay-after-netplay-tune.json`,
+`_runtime/mp-race-e2e.json`, `_runtime/mp-ws-probe`/`mp-lobby-ws.json`. The bench
+records `G-DROP` as a known failure: it compares guest *presented* fps with
+decoded, and presentation is the remaining gap, not the transport.
+
+## Server edge
+
+| Change | Measured |
+| --- | --- |
+| Strong ETag | `/rom/r4.chd` → `ETag: "1553dbc2-1a1a89969ac"`; `If-Range` + `Range: 0-99` → **206** (`bytes 0-99/357817282`); `If-None-Match` → **304**. With the old weak `W/` tag the same request re-sent all 357,817,282 bytes as a `200` |
+| Compression | text assets only: `emulator.min.js` 426,343 → **106,924 B** brotli; app JS 60,561 → 18,418 B gzip; `/rom`, `/bios`, `/music`, `/ghosts` and any `Range` request are skipped |
+| Keep-alive | `Keep-Alive: timeout=65` (was 5 s), `headersTimeout` 66 s |
+| Isolation | COOP `same-origin` + COEP `credentialless` on `/`, `/welcome`, `/games`, `/multiplayer`, `/lobby`, `/play*`, `/docs/*`, `/music` — only on a loopback host or HTTPS |
+| TLS | `RR4_TLS=1` starts `https://<host>:8443` beside the untouched `:8080`; cert from `_server/scripts/make-cert.ps1`; a missing cert logs one line and HTTP keeps serving |
+| Netplay config | `GET /api/netplay-config` → `{relayUrl, relayPort, secure, protocol, sameOrigin, socketPath, gameIds}` from the request origin |
+
+The COOP/COEP change is what makes the **embedded** `/play?embedded=1` frame
+`crossOriginIsolated=true` on loopback/HTTPS, which is the precondition for
+threads and `navigator.storage.persist()`. On a plain-HTTP LAN origin the shell
+sends neither header, so there is no isolation **and no "ignored COOP" console
+message** — the warning the older docs called "expected" no longer occurs.
+
+Verify:
+
+```powershell
+cd _server
+node scripts/https-smoke.mjs http://127.0.0.1:8080       # 47/47
+node scripts/https-smoke.mjs http://<host-lan-ip>:8080  # 35/35, no COOP by design
+```
+
+Artifact: `_runtime/edge-headers-2026-11-06.txt`.
+
+## Honest limits
+
+- **Everything 2P is two browser contexts on one host.** The race proof is
+  `harness-verified two-browser` 40/40 (`_runtime/mp-race-e2e.json`). No two-machine
+  run exists, so a real wired + Wi-Fi pair on the router is still unverified.
+- **No phone run.** Mobile frame rate is an estimate from CPU throttling; the
+  canvas size (378×283) is the only measured mobile fact.
+- **Guest audio is absent.** The 4.3 host captures from `Module.AL.currentCtx`,
+  which is `null` under RWebAudio, so the track list is `["video:live"]`
+  (`No audio tracks captured - guests will have no audio`; guest
+  `remoteEls: 0`, no inbound audio RTP). This is not "unverified audio" — there
+  is no audio to hear. A fix needs an RWebAudio tap on the host.
+- **Guest presented fps is not 60.** Decoded is 57.4; presented is 42–55 because
+  the guest's detached `<video>` is consumed by a 140 Hz rAF copy. Attaching the
+  element, a desynchronized context, rVFC and a frame-count-gated blit were all
+  measured and none beat the bundle loop.
+- **The pad channel is ordered/reliable.** An unordered, retransmit-free channel
+  (`{ordered:false, maxRetransmits:0}`) needs a second data channel plus a 4 Hz
+  state resend; it is **not implemented**.
+- **The relay is not folded into `:8080`.** `/api/netplay-config` reports the
+  URL, but `play-net.js` still builds `http://<hostname>:3010`; an HTTPS page
+  needs the relay on `:3010` (mixed content otherwise).
+- **Threads do not buy fps here.** `?threads=1` on a secure origin measured
+  60.1–60.2 fps, the same as `threads=0`, and 33.2 vs 37.0 fps at 4× CPU
+  throttle. They are a compatibility feature, not a speed-up.

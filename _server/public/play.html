@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Ridge Racer // Native Browser</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e10600'/%3E%3Ctext x='16' y='24' font-family='Arial,sans-serif' font-size='22' font-weight='900' fill='%23fff' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/play.css">
+<link rel="stylesheet" href="/css/music-player.css">
+<script>
+  // /play?netplay=1 is normally routed to play-net.html by src/server.js.
+  // This fallback keeps the alias working through an older static-only process.
+  if (new URLSearchParams(location.search).get('netplay') === '1') {
+    location.replace('/play-net.html' + location.search + location.hash);
+  }
+</script>
+</head>
+<body>
+<div id="play-shell">
+  <header id="play-bar">
+    <div class="brand"><span class="brand-mark">R</span> <span id="brandGame">RIDGE RACER <em>TYPE 4</em></span></div>
+    <label class="picker" for="gameSelect">
+      <span>GAME</span>
+      <select id="gameSelect" aria-label="Select game"></select>
+    </label>
+    <div id="bootStatus" class="status" data-state="loading">NO DISC</div>
+    <button id="ghostBtn" class="btn btn-ghost-rec" type="button" title="Record a LAN ghost replay" hidden>
+      <span class="btn-ico" aria-hidden="true">●</span> REC GHOST
+    </button>
+    <button id="ejectBtn" class="btn btn-eject" type="button" title="Eject the disc and return to setup" hidden>
+      <span class="btn-ico" aria-hidden="true">▲</span> EJECT
+    </button>
+    <a id="docsBtn" class="btn btn-docs" href="/docs/introduction" title="Field manual: games, native recomp, LAN multiplayer, REA evidence">
+      <span class="btn-ico" aria-hidden="true">?</span> DOCS
+    </a>
+    <a id="multiplayerBtn" class="btn btn-netplay" href="/play-net.html" title="Two-player LAN netplay (EmulatorJS 4.3-pre + relay on TCP 3010)">
+      <span class="btn-ico" aria-hidden="true">2P</span> MULTIPLAYER
+    </a>
+    <button id="fsBtn" class="btn" type="button" title="Fullscreen (F)" aria-pressed="false">
+      <span class="btn-ico" aria-hidden="true">[ ]</span> FULLSCREEN
+    </button>
+  </header>
+
+  <main id="play-stage">
+    <section id="setup" class="setup" aria-label="Disc setup">
+      <div class="setup-head">
+        <div>
+          <div class="setup-kicker">DISC DECK // READY</div>
+          <h1>CHOOSE A DISC</h1>
+          <p class="setup-sub">Eject, configure, then insert a disc. Nothing downloads until you press START.</p>
+        </div>
+        <button id="setupEject" class="btn" type="button" title="Clear the tray">EJECT DISC</button>
+      </div>
+      <div class="setup-grid">
+        <div class="disc-deck">
+          <div class="disc-slot">
+            <div id="discArt" class="disc-art">NO<br>DISC</div>
+          </div>
+          <div id="discName" class="disc-name">NO DISC</div>
+          <div id="discMeta" class="disc-meta">Select a disc from the library</div>
+          <button id="setupStart" class="btn btn-primary" type="button" disabled>INSERT DISC &amp; START</button>
+          <label class="local-disc">
+            <span>INSERT LOCAL DISC</span>
+            <input id="localDisc" type="file" accept=".chd,.cue,.bin,.iso,.img,.7z,.zip" />
+          </label>
+        </div>
+
+        <div class="disc-library">
+          <div class="setup-section-head"><h2>DISC LIBRARY</h2><span id="discCount">0 discs</span></div>
+          <div id="discList" class="disc-list"></div>
+        </div>
+
+        <div class="setup-options">
+          <div class="setup-section-head"><h2>SETTINGS</h2></div>
+          <label class="setup-field">FILTER
+            <select id="setupFilter" aria-label="Setup video filter">
+              <option value="dlss5">DLSS 5</option>
+              <option value="off">Off</option>
+              <option value="scanlines">Scanlines</option>
+              <option value="crt">CRT</option>
+              <option value="vignette">Vignette</option>
+              <option value="sharp">Sharp</option>
+            </select>
+          </label>
+          <label class="setup-field">QUALITY
+            <select id="setupQuality" aria-label="Setup quality preset">
+              <option value="authentic">AUTHENTIC - 1280x960, full grade</option>
+              <option value="balanced">BALANCED - no buffer copy</option>
+              <option value="perf">PERFORMANCE - no grade, frameskip</option>
+              <option value="auto">AUTO - measures, then drops a tier</option>
+            </select>
+          </label>
+          <label class="setup-field">VOLUME
+            <input id="setupVolume" type="range" min="0" max="100" step="5" value="70" />
+          </label>
+          <label class="setup-check"><input id="setupFullscreen" type="checkbox" /> FULLSCREEN ON START</label>
+          <div id="setupPads" class="setup-pads">CONTROLLERS: keyboard ready</div>
+          <div class="setup-section-head ghost-head"><h2>LAN GHOSTS</h2><button id="ghostRefresh" class="mini-btn" type="button">REFRESH</button></div>
+          <div id="ghostList" class="ghost-list"><span class="ghost-empty">No ghost clips yet.</span></div>
+          <div id="ghostSelected" class="ghost-selected">NO GHOST SELECTED</div>
+          <div class="setup-links">
+            <a href="/play-net.html">2P LAN NETPLAY</a>
+            <a href="/">LAN ARCADE</a>
+          </div>
+          <p class="setup-note">DLSS 5 is a real-time visual grade, not NVIDIA NGX. In netplay the guest applies it to the received stream. Ghost recording uses tab capture, so record on the host via <b>http://localhost:8080/play</b> (or HTTPS); the uploaded ghost is then visible to LAN players. QUALITY sets the fullscreen cap (1280x960), the WebGL buffer policy and the core options; <b>?quality=authentic|balanced|perf|auto</b> overrides it, and <b>?pb=1</b> restores the old always-on preserveDrawingBuffer.</p>
+        </div>
+      </div>
+    </section>
+
+    <div id="game" aria-label="PlayStation emulator screen"></div>
+
+    <div id="bootOverlay" class="overlay" aria-live="polite">
+      <div class="overlay-inner">
+        <div class="overlay-kicker" id="overlayKicker">NATIVE - NO STREAM</div>
+        <h1 id="overlayTitle">RIDGE RACER TYPE 4</h1>
+        <p id="overlayText">Downloading disc image...</p>
+        <div class="bar"><i id="overlayBar"></i></div>
+        <p class="overlay-hint" id="overlayHint">341 MB - served from this machine</p>
+      </div>
+    </div>
+
+    <button id="soundGate" class="sound-gate" type="button" hidden>
+      <span class="sound-gate-main">CLICK TO RACE</span>
+      <span class="sound-gate-sub">SOUND ON - CLICK ANYWHERE OR PRESS START</span>
+    </button>
+
+
+  </main>
+
+  <footer id="play-foot">
+    <span id="footCore">pcsx_rearmed</span>
+    <span class="dot">|</span>
+    <span id="footRom">/rom/...</span>
+    <span class="dot">|</span>
+    <span id="footTiming">-</span>
+    <span class="dot">|</span>
+    <span id="footQuality" title="Quality preset in effect">Q AUTHENTIC</span>
+    <label class="filter-picker"><span>FILTER</span>
+      <select id="filterSelect" aria-label="Video filter">
+        <option value="dlss5">DLSS 5</option>
+        <option value="off">Off</option>
+        <option value="scanlines">Scanlines</option>
+        <option value="crt">CRT</option>
+        <option value="vignette">Vignette</option>
+        <option value="sharp">Sharp</option>
+      </select>
+    </label>
+    <label class="filter-picker"><span>QUALITY</span>
+      <select id="qualitySelect" aria-label="Quality preset">
+        <option value="authentic">AUTHENTIC</option>
+        <option value="balanced">BALANCED</option>
+        <option value="perf">PERFORMANCE</option>
+        <option value="auto">AUTO</option>
+      </select>
+    </label>
+    <a id="footNetLink" href="/play-net.html">MULTIPLAYER (2P LAN)</a>
+    <a id="footLink" href="/">LAN ARCADE</a>
+  </footer>
+</div>
+
+<div id="ghostBadge" class="ghost-badge" hidden>
+  <span>LAN GHOST</span>
+  <button id="ghostClose" type="button" title="Hide ghost">X</button>
+</div>
+<video id="ghostVideo" class="ghost-video" muted autoplay playsinline hidden></video>
+
+<button id="fsExit" class="fs-exit" type="button" title="Exit fullscreen (F / Esc)" hidden>
+  EXIT FULLSCREEN X
+</button>
+
+<div id="rr4-music-gate"></div>
+<div id="rr4-music-player"></div>
+
+<script src="/js/play.js"></script>
+<script type="module" src="/js/music-player.js"></script>
+</body>
+</html>

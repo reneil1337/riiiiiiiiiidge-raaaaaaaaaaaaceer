@@ -1,0 +1,70 @@
+---
+title: Legal & credits
+description: User-supplied discs, BIOS licensing, and the projects this cabinet stands on.
+---
+
+## Game data
+
+*Ridge Racer Type 4*, *Rage Racer* and *Ridge Racer* — including their names,
+cars, artwork, music, characters and trademarks — remain the property of their
+respective rights holders (Namco / Bandai Namco).
+
+This project is an independent fan-made recompilation and arcade wrapper. It is
+**not affiliated with or endorsed by** the original rights holders.
+
+The disc images are **user-supplied** and are served only to the local network.
+No game data is redistributed with the code.
+
+## Discs in this workspace
+
+| Game | Region / serial | Notes |
+| --- | --- | --- |
+| Ridge Racer Type 4 | USA · `SLUS-00797` | CUE/BIN + `disc/r4.chd` |
+| Rage Racer | USA | `disc/rage-racer.chd` |
+| Ridge Racer (1994) | USA · `SCUS-94300` | `disc/ridge-racer.chd` |
+
+The decompilation reference for the original *Ridge Racer* is the Japanese
+`SLPS-00001`; the dump here is the USA `SCUS-94300`, so the two are not assumed
+byte-identical.
+
+## BIOS
+
+- **OpenBIOS** is the PCSX-Redux project's freely licensed replacement BIOS. It
+  is bundled with the native release (`bios/openbios.bin`) and served at
+  `/bios/openbios.bin`. Keep `OpenBIOS.LICENSE` with it.
+- **Custom BIOS** is a user dump passed to the runtime. It is not copied,
+  downloaded or redistributed by this project.
+- PCSX-Rearmed can fall back to **HLE** if no BIOS is available.
+
+## Software credits
+
+| Project | Role | Link |
+| --- | --- | --- |
+| PSXRecomp | PlayStation static recompiler framework | [github.com/mstan/psxrecomp](https://github.com/mstan/psxrecomp) |
+| RidgeRacer4Recomp | R4 recompilation release | [github.com/omegakatana92/RidgeRacer4Recomp](https://github.com/omegakatana92/RidgeRacer4Recomp) |
+| EmulatorJS | Browser emulator front end | [emulatorjs.org](https://emulatorjs.org/) |
+| PCSX-Rearmed | PlayStation core used in the browser | [github.com/libretro/pcsx_rearmed](https://github.com/libretro/pcsx_rearmed) |
+| REA | Reverse-engineering evidence tooling | [rea.tools](https://rea.tools/) |
+| Zudoku | Documentation framework for this site | [zudoku.dev](https://zudoku.dev/) |
+| ffmpeg | Capture/encode for the host-stream fallback | [ffmpeg.org](https://ffmpeg.org/) |
+| jsmpeg | MPEG-TS playback in the browser | [github.com/phoboslab/jsmpeg](https://github.com/phoboslab/jsmpeg) |
+
+## Fonts and visual style
+
+The documentation uses a Ridge Racer-inspired visual system: navy, signal red,
+cyan timing lines, hard angles and condensed italic type. The logo and hero are
+original compositions; no Namco artwork is bundled.
+
+## What not to commit
+
+- Disc images (`.bin`, `.cue`, `.chd`) from the games.
+- Retail BIOS dumps.
+- Save files or memory cards containing personal progress.
+- Anything from `_runtime/` that contains captured game video/audio, unless it is
+  intentional test evidence.
+
+## Reporting
+
+When reporting a problem, include the path (`/play`, `/play-net`, native), the
+host/guest roles, the browser console, the relay `/health` output and the
+relevant log tail. Do not attach disc images or retail BIOS files.

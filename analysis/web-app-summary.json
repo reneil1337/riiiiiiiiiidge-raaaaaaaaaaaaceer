@@ -1,0 +1,31 @@
+{
+  "source_evidence": "analysis/web-app.json",
+  "root": "D:\\ridge racer type 4\\_server\\public",
+  "relevant_files": 5,
+  "parsed_javascript_files": 3,
+  "text_bytes_read": 271344,
+  "visited_ast_nodes": 44993,
+  "findings": 36,
+  "parse_failures": 0,
+  "files": [
+    "index.html",
+    "css/style.css",
+    "js/app.js",
+    "js/controls.js",
+    "js/jsmpeg.min.js"
+  ],
+  "observations": [
+    "The client is a static, no-build application served by Node.",
+    "Input is handled in js/controls.js via keyboard, touch and the browser Gamepad API.",
+    "The stream is decoded by the bundled jsmpeg player over a WebSocket MPEG-TS feed.",
+    "No Electron, IPC, native addon or external runtime dependency is used by the browser client."
+  ],
+  "notes": [
+    "The raw REA snapshot was taken while an older js/jsmpeg.js copy was still present; the current client loads only js/jsmpeg.min.js.",
+    "Gamepad API availability was rechecked in Brave/Chromium on the plain-HTTP LAN origin: navigator.getGamepads is present even though isSecureContext is false."
+  ],
+  "limitations": [
+    "AST coverage is partial; dynamic property access and runtime invocation are not proven by static analysis.",
+    "REA's analyze-web-bundle command requires a live CDP targetId; the live page was checked with Puppeteer screenshots and WebSocket/API tests instead."
+  ]
+}

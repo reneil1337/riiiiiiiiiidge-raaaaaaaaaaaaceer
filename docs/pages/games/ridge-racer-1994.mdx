@@ -1,0 +1,95 @@
+---
+title: Ridge Racer (1994)
+description: The arcade original and PlayStation launch title — one seaside circuit, 14 CD tracks, one player, zero apologies.
+---
+
+<dl className="rr-spec">
+  <div><dt>Release</dt><dd>1993 (arcade) · 1994 (JP PS1) · 1995 (US)</dd></div>
+  <div><dt>Developer</dt><dd>Namco</dd></div>
+  <div><dt>Platform</dt><dd>Arcade / PlayStation</dd></div>
+  <div><dt>USA serial</dt><dd>SCUS-94300</dd></div>
+  <div><dt>Players</dt><dd>1 on disc · lounge: shared car</dd></div>
+  <div><dt>Courses</dt><dd>1 (single seaside circuit)</dd></div>
+  <div><dt>Disc tracks</dt><dd>14 CD tracks (1 data + 13 audio)</dd></div>
+  <div><dt>Disc here</dt><dd>CHD 296 MB</dd></div>
+  <div><dt>Game key</dt><dd><code>ridge</code> · EJS id 6</dd></div>
+  <div><dt>Status</dt><dd><span className="rr-pill">1P</span></dd></div>
+</dl>
+
+## The game
+
+This is the one that started it. The **1993 arcade** version was Namco's answer
+to *Virtua Racing*: a fast, bright, drifty racer built around a single seaside
+course and a yellow-and-blue Solvalou car. The **1994 PlayStation** port is the
+launch-window showpiece that proved the console could do a convincing arcade
+racer at home.
+
+What still holds up:
+
+- **The drift.** The rear steps out early and the counter-steer is generous.
+  It is the purest expression of the Ridge Racer handling model.
+- **The presentation.** The "PRODUCED BY namco" boot, the camera fly-bys, the
+  late-night jazz-fusion soundtrack.
+- **The course knowledge.** The original course is short, so a clean lap is
+  mostly about exit speed and not lifting.
+
+The USA disc in this workspace is **SCUS-94300**, with 14 tracks: one data track
+and 13 audio tracks. The decompilation reference for the Japanese release is
+**SLPS-00001**, so do not assume the two are byte-identical.
+
+## How it runs in this project
+
+| Path | What happens |
+| --- | --- |
+| `/play?game=ridge` | PCSX-Rearmed in the browser, `disc/ridge-racer.chd` |
+| `/play-net?game=ridge` | Netplay page; the guest sees the host's screen and sends pad input, not a second car |
+| `/multiplayer` | 2P LOUNGE with **Ridge Racer 1994** in the **DISC** selector: **shared car** — one car, both pads, no split screen |
+| `/lobby` | Native fallback is Type 4 only |
+| Native | Not the pinned recomp target in this workspace |
+
+:::note{title="Single-player disc, shared car in the lounge"}
+The original Ridge Racer has no split-screen 2P mode. The lounge gets around that
+by running it as a **SHARED CAR**: choose **Ridge Racer 1994** in the
+`/multiplayer` **DISC** selector and the server announces the one course this disc
+has (Seaside Route 765) plus one of the four car slots. That plan is an
+announcement only — **the host still picks the course and car by hand** in the
+disc's own menus and starts a normal single-player race. The guest's pad is merged
+into the host car (`player 1 → player 0`), so both people drive the same car.
+
+Limits: **no split screen, no second car, no automatic menu macro.** For a real
+two-car LAN race use **Ridge Racer Type 4**. Evidence for this mode is
+`netplay transport; in-game mode unverified`. Full detail:
+[Shared car](/multiplayer/shared-car).
+:::
+
+## Start
+
+```text
+http://<host-lan-ip>:8080/play?game=ridge
+```
+
+The first canvas is black for several seconds while the 296 MB CHD loads. The
+Namco boot sequence and title appear after that; on a cold headless run it took
+roughly 20–30 seconds.
+
+## Disc notes
+
+| Item | Value |
+| --- | --- |
+| Archive | `Ridge Racer (USA).7z` |
+| Serial | `SCUS-94300` (Track 01) |
+| Region | USA |
+| Media | CD-ROM, MODE2/2352 data + 13 audio tracks |
+| CHD output | `disc/ridge-racer.chd` |
+| CHD size | 309,882,296 bytes |
+| Verification | `chdman verify` — raw and overall SHA1 successful |
+
+The `/rom` route already serves the `disc/` folder, so no server change was
+needed to add this game.
+
+## Controls
+
+Same pad/keyboard mapping as the other two titles. See
+[Controls](/reference/controls). The game's own menu uses **Start** to confirm
+and the D-pad to move. `Return`-as-Start is the native R4 keybind; whether the
+browser EmulatorJS default matches it has not been confirmed.

@@ -1,0 +1,10 @@
+﻿import express from 'express';
+import path from 'node:path';
+const app=express();
+const root='..';
+app.use((req,res,next)=>{res.setHeader('Cross-Origin-Opener-Policy','same-origin');res.setHeader('Cross-Origin-Embedder-Policy','require-corp');next();});
+app.use('/emulator',express.static(path.join(root,'_server/public/emulator')));
+app.use('/rom',express.static(path.join(root,'disc')));
+app.use('/bios',express.static(path.join(root,'_server/game/bios')));
+app.use(express.static(path.join(root,'_runtime/ejs-test')));
+app.listen(8100,'0.0.0.0',()=>console.log('ejs test 8100'));

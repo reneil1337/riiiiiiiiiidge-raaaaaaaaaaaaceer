@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ridge Racer Type 4 // Machine Check</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/games.css" />
+  <style>
+    /* Race Day entry point (hub-links). Scoped to the new elements only so the
+       shared games.css stays untouched. */
+    .grd-pick { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+    .grd-pick span {
+      color: var(--g-muted);
+      font-family: var(--g-mono);
+      font-size: 8px;
+      letter-spacing: .14em;
+    }
+    .grd-pick select {
+      max-width: 100%;
+      padding: 7px 8px;
+      border: 1px solid var(--g-line);
+      border-radius: 3px;
+      background: var(--g-panel-2);
+      color: var(--g-text);
+      font-family: var(--g-mono);
+      font-size: 10px;
+      letter-spacing: .06em;
+    }
+    .gbtn--raceday {
+      border-color: var(--g-yellow);
+      background: color-mix(in srgb, var(--g-yellow) 14%, var(--g-panel-2));
+      color: #ffe6a3;
+    }
+    #raceDayCta:hover {
+      border-color: var(--g-yellow);
+      background: color-mix(in srgb, var(--g-yellow) 26%, var(--g-panel-2));
+    }
+    #raceDayCta[aria-disabled="true"] {
+      border-color: var(--g-line);
+      background: var(--g-panel-2);
+      color: #8b93a2;
+      cursor: not-allowed;
+    }
+    #raceDayCta[aria-disabled="true"]:hover {
+      border-color: var(--g-line);
+      background: var(--g-panel-2);
+    }
+    #raceDayCta:focus-visible,
+    .grd-pick select:focus-visible {
+      outline: 2px solid var(--g-yellow);
+      outline-offset: 2px;
+    }
+    #raceDayNote { flex: 1 1 230px; min-width: 0; }
+  </style>
+</head>
+<body>
+  <main class="gwrap">
+    <header class="ghead">
+      <p class="gkicker">CABINET CHECK // REAL RACING ROOTS '99</p>
+      <h1>SELECT YOUR MACHINE</h1>
+      <p class="gsub">Three discs are in the deck. The soundtrack keeps playing while you inspect them. Pick a machine, then start the race.</p>
+      <div class="gstatus">
+        <span><b>3</b> discs ready</span>
+        <span><b>1</b> two-player title</span>
+        <span><b>57</b> music tracks</span>
+        <span class="glive"><i></i> audio linked</span>
+      </div>
+      <div class="ghead-actions">
+        <a class="gbtn gbtn--2p" href="/multiplayer">2P HEAD-TO-HEAD // CREATE OR JOIN</a>
+        <span>Invite a rival, both ready, random grid.</span>
+      </div>
+      <div class="ghead-actions">
+        <label class="grd-pick" for="gDisc">
+          <span>RACE DAY DISC</span>
+          <select id="gDisc" autocomplete="off">
+            <option value="r4">Ridge Racer Type 4</option>
+            <option value="rage">Rage Racer</option>
+            <option value="ridge">Ridge Racer 1994</option>
+          </select>
+        </label>
+        <a class="gbtn gbtn--raceday" id="raceDayCta" href="/race-day?game=r4" aria-describedby="raceDayNote">RACE DAY — 50 DRIVERS</a>
+        <span id="raceDayNote" role="status" aria-live="polite">Mass start, up to 50 drivers, each on their own core. R4 only.</span>
+      </div>
+    </header>
+
+    <section class="ggrid">
+      <article class="gcard gcard--r4">
+        <div class="gtag">DISC 01 · SLUS-00797 · 341 MB · 2P</div>
+        <div class="gno">01</div>
+        <h2>Ridge Racer Type 4</h2>
+        <p class="gdesc">Four teams, one garage, real split-screen. The only disc in the deck with a true second car and the headline LAN title.</p>
+        <dl class="gspec">
+          <div><dt>Mode</dt><dd>1–2P split-screen</dd></div>
+          <div><dt>Region</dt><dd>USA / NTSC-U</dd></div>
+          <div><dt>Session</dt><dd>R4 team garage</dd></div>
+        </dl>
+        <div class="gacts">
+          <a class="gbtn gbtn--primary" href="/play?game=r4" data-game="r4">START TYPE 4</a>
+          <a class="gbtn" href="/play?game=r4&amp;setup=1" data-game="r4">CHECK DISC DECK</a>
+          <a class="glink" href="/docs/games/ridge-racer-type-4">DOSSIER →</a>
+        </div>
+      </article>
+
+      <article class="gcard gcard--rage">
+        <div class="gtag">DISC 02 · SLUS-00403 · 472 MB · 1P</div>
+        <div class="gno">02</div>
+        <h2>Rage Racer</h2>
+        <p class="gdesc">Cold, industrial point-to-point racing. Four courses run both ways, a garage economy and the heaviest disc in the deck.</p>
+        <dl class="gspec">
+          <div><dt>Mode</dt><dd>1P career</dd></div>
+          <div><dt>Courses</dt><dd>4 forward / reverse</dd></div>
+          <div><dt>Disc</dt><dd>17 CD tracks</dd></div>
+        </dl>
+        <div class="gacts">
+          <a class="gbtn gbtn--primary" href="/play?game=rage" data-game="rage">START RAGE RACER</a>
+          <a class="gbtn" href="/play?game=rage&amp;setup=1" data-game="rage">CHECK DISC DECK</a>
+          <a class="glink" href="/docs/games/rage-racer">DOSSIER →</a>
+        </div>
+      </article>
+
+      <article class="gcard gcard--ridge">
+        <div class="gtag">DISC 03 · SCUS-94300 · 296 MB · 1P</div>
+        <div class="gno">03</div>
+        <h2>Ridge Racer <em>1994</em></h2>
+        <p class="gdesc">The arcade original and PlayStation launch title. One seaside circuit, the purest drift model, and the sunset that started it.</p>
+        <dl class="gspec">
+          <div><dt>Mode</dt><dd>1P arcade</dd></div>
+          <div><dt>Courses</dt><dd>1 seaside circuit</dd></div>
+          <div><dt>Disc</dt><dd>14 CD tracks</dd></div>
+        </dl>
+        <div class="gacts">
+          <a class="gbtn gbtn--primary" href="/play?game=ridge" data-game="ridge">START RIDGE RACER</a>
+          <a class="gbtn" href="/play?game=ridge&amp;setup=1" data-game="ridge">CHECK DISC DECK</a>
+          <a class="glink" href="/docs/games/ridge-racer-1994">DOSSIER →</a>
+        </div>
+      </article>
+    </section>
+
+    <footer class="gfoot">
+      <span>ENTER THE CABINET UNLOCKS AUDIO</span>
+      <span>MUSIC CONTINUES IN DOCS</span>
+      <span>TCP 8080 PAGE // TCP 3010 NETPLAY</span>
+    </footer>
+  </main>
+
+  <script>
+    /* Race Day CTA (hub-links). The href always tracks the disc this page is
+     * looking at: ?game= on this document, else the cabinet shell's GAME
+     * selector while /games runs in the frame, else R4. Plain anchors only, so
+     * a server without the MMO route answers a real 404 instead of throwing.
+     */
+    (() => {
+      const cta = document.getElementById('raceDayCta');
+      const note = document.getElementById('raceDayNote');
+      const pick = document.getElementById('gDisc');
+      if (!cta || !pick) return;
+
+      const R4_ONLY = 'Race Day uses Ridge Racer Type 4';
+      const DISCS = {
+        r4: { name: 'Ridge Racer Type 4', eligible: true },
+        rage: { name: 'Rage Racer', eligible: false },
+        ridge: { name: 'Ridge Racer 1994', eligible: false },
+      };
+      let userPicked = false;
+
+      function normalise(value) {
+        const key = String(value || '').toLowerCase();
+        return Object.prototype.hasOwnProperty.call(DISCS, key) ? key : '';
+      }
+      function fromQuery() {
+        try { return normalise(new URLSearchParams(location.search).get('game')); }
+        catch { return ''; }
+      }
+      function fromShell() {
+        try {
+          const top = window.parent && window.parent !== window ? window.parent : null;
+          const shell = top && top.RR4Shell;
+          const state = shell && typeof shell.getState === 'function' ? shell.getState() : null;
+          return normalise(state && state.game);
+        } catch { return ''; }
+      }
+
+      function apply(value) {
+        const key = normalise(value) || 'r4';
+        const disc = DISCS[key];
+        cta.setAttribute('href', `/race-day?game=${key}`);
+        if (disc.eligible) {
+          cta.textContent = 'RACE DAY — 50 DRIVERS';
+          cta.removeAttribute('aria-disabled');
+          cta.removeAttribute('title');
+          note.textContent = `Mass start, up to 50 drivers, each on their own copy of ${disc.name}.`;
+        } else {
+          cta.textContent = 'RACE DAY — R4 ONLY';
+          cta.setAttribute('aria-disabled', 'true');
+          cta.setAttribute('title', R4_ONLY);
+          note.textContent = `${R4_ONLY}; ${disc.name} is single-player only.`;
+        }
+        if (pick.value !== key) pick.value = key;
+        document.body.dataset.raceDayDisc = key;
+      }
+
+      pick.addEventListener('change', () => { userPicked = true; apply(pick.value); });
+
+      // The link keeps a real href while disabled; swallow the click so the
+      // honest R4-only reason stays on screen instead of starting a race.
+      cta.addEventListener('click', (event) => {
+        if (cta.getAttribute('aria-disabled') === 'true') event.preventDefault();
+      });
+
+      // While embedded, the shell's GAME selector is the same selection: read it
+      // through the public RR4Shell.getState() (no reliance on shell internals),
+      // and bind its <select> when it exposes a known id.
+      function embedded() {
+        return !!(window.parent && window.parent !== window);
+      }
+      function bindShellSelector() {
+        try {
+          const sel = window.parent.document.getElementById('rr4sGame')
+            || window.parent.document.getElementById('gameSelect');
+          if (!sel) return;
+          sel.addEventListener('change', () => { userPicked = false; apply(sel.value); });
+        } catch { /* cross-origin: the page-local selector owns the state */ }
+      }
+
+      apply(fromQuery() || fromShell() || 'r4');
+      if (embedded()) {
+        bindShellSelector();
+        // The shell does not broadcast game changes to the frame; poll its
+        // public state cheaply so the CTA follows the cabinet's disc selector.
+        setInterval(() => {
+          if (userPicked) return;
+          const game = fromShell();
+          if (game && game !== document.body.dataset.raceDayDisc) apply(game);
+        }, 800);
+      }
+      window.addEventListener('focus', () => {
+        if (userPicked) return;
+        const game = fromShell();
+        if (game) apply(game);
+      });
+    })();
+  </script>
+</body>
+</html>

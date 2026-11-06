@@ -1,0 +1,375 @@
+---
+title: Race Day — 50 drivers
+description: One mass-start race, up to 50 drivers each running their own core, one shared clock and one leaderboard. LFG, the five screens, the RAM timing fields, the 550-socket evidence and the limits.
+---
+
+**RACE DAY** is the third room in the cabinet: one race, up to **50 drivers**,
+**one shared clock** and **one leaderboard**. Every driver runs Ridge Racer Type 4
+in their own browser, so the server streams no video — it owns the *event*
+(course, car class, start signal, seats) and the standings, and it derives
+position from the telemetry each browser reads out of its own emulated PSX RAM.
+
+<div className="rr-route"><b>SHELL</b>  /  →  ENTER  →  /welcome  →  RACE DAY
+  │
+  ├─ /race-day                 callsign → FIND ME A RACE → grid fills
+  │     ├─ ws://host:8080/mmo  seats, event clock, telemetry, standings
+  │     └─ ?party=CODE         invite link (also /?party=CODE in the shell)
+  │
+  ├─ grid (5 s) → countdown 3-2-1 → racing
+  │     └─ /play?mmo=1&amp;event=…&amp;seat=…&amp;team=…   HUD on your own core
+  │
+  └─ results (20 s) → next event, back in the lobby</div>
+
+<div className="rr-actions">
+  <a className="rr-btn rr-btn--primary" href="/race-day">Open Race Day</a>
+  <a className="rr-btn" href="/welcome">Ridge City hub</a>
+  <a className="rr-btn rr-btn--ghost" href="/multiplayer">2P lounge</a>
+</div>
+
+## What Race Day is
+
+The 2P lounge is a head-to-head: one host core, one WebRTC stream, one guest
+sending P2 input. Race Day is a **mass start**: 50 separate browser cores leave
+the line together, and the only thing they share is the server's start signal and
+standings board. There is no host, no stream and no per-driver server cost.
+
+| | **2P LOUNGE** (`/multiplayer`) | **RACE DAY** (`/race-day`) |
+| --- | --- | --- |
+| Drivers | 2 (host + guest) | up to 50 (MVP); architected for 500 |
+| Where the race runs | the host's core; the guest renders a WebRTC stream and sends P2 input | every driver runs their own R4 core locally |
+| Who owns the course/car | server rolls one plan when both press READY | server rolls one plan per event (one of 8 courses, a `D` or `G` car class) |
+| Transport | `WS /mp` on `:8080` plus the `:3010` relay/WSS | `WS /mmo` on `:8080` only |
+| What the server sees | room, teams, READY | seats, telemetry ≤ 4 Hz, standings at 2 Hz |
+| Start | both READY | LFG fill window, a full grid, or `START WITH n` |
+| Audio | guest audio **absent** (video-only stream) | each driver hears their own emulator |
+| Ends with | REMATCH back to the same room | a 50-row result, then the next event |
+
+## The player path
+
+1. **ENTER.** The shell's ENTER gate is the audio gesture. The first view is
+   `/welcome`; the **RACE DAY** card ("50 DRIVERS · ONE RACE") is the primary
+   route, and the shell top bar carries a **RACE DAY** button next to PLAY.
+   `/games` has a RACE DAY CTA for the R4 disc, and `/multiplayer` links to it.
+2. **Callsign.** `#mmoName` takes up to 20 characters, remembered in
+   `localStorage['rr4.mmo.name']`. The tab's driver id lives in
+   `sessionStorage['rr4.mmo.driverId']`, so a refresh reclaims the same seat for
+   30 s; a private window is a new driver.
+3. **FIND ME A RACE.** One queue, 50 slots, four teams. The button becomes
+   LEAVE QUEUE while queued and TAKE A SEAT NEXT RACE once the event is running.
+4. **The grid fills.** A human race starts when the fill window
+   (`RR4_MMO_FILL_MS`, 60 s by default) expires with at least `RR4_MMO_MIN` (4)
+   drivers queued, **or** immediately when the grid is full (`RR4_MMO_MAX`, 50).
+   Any queued driver can start early with **START WITH n** — the label names the
+   live queue size and the button only enables at ≥ `min`.
+5. **GRID LOCKED** (5 s). The seat list, the course and the car class freeze for
+   the whole event. Nothing is rolled per browser.
+6. **Countdown.** One server `startsAt` epoch is broadcast as `countdown` frames
+   for 3, 2, 1; the overlay is `aria-live="polite"`.
+7. **Race.** The board fills at 2 Hz from telemetry (top N + you + neighbours).
+   Your own race runs in `/play` with the Race Day HUD
+   (`/play?mmo=1&event=<id>&seat=<n>&team=<t>&game=r4&threads=0`).
+8. **Results.** 50 rows, your row pinned, a podium strip, "NEXT RACE IN 00:20",
+   then the next event's lobby. A server restart starts a brand-new race day.
+
+### Invite, spectate, bots
+
+- **Invite.** `COPY INVITE LINK` copies the party link. A party is at most two
+  drivers; the server issues a **5-character code** from
+  `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no `I`/`O`, no `0`/`1`). Opening
+  `/race-day?party=CODE` joins the party and queues in one step. In the shell,
+  `/?party=CODE` (or `/?mmo=1`) presses through the same path and loads
+  `/race-day?embedded=1&party=CODE` in the iframe.
+- **Spectating.** `/race-day?spectate=1` (or the LFG **WATCH ONLY** toggle)
+  opens a seatless client: it never queues, never sends telemetry, and renders
+  the live board only. Your friends' rows are marked on the board.
+- **Bots.** `/race-day?bots=1`, the LFG **BOTS** toggle or `RR4_MMO_BOTS=1`
+  fills empty seats with demo bots so one human can see a full grid. Bots get a
+  plausible, slower telemetry stream and are labelled `BOT` everywhere. A
+  bot-only grid is never a player race.
+
+## The five screens
+
+Screenshots are runtime PNGs written by `_server/mmo-shots.mjs` at 1440×900
+(`-desktop`) and 390×844 (`-mobile`). Most are driven by injecting `/mmo` frames
+through the real client store and renderers; only `welcome-entry`,
+`shell-embedded` and `live-lobby` are live pages. They are UI captures, **not** a
+real 50-human race. The copies below live in `docs/public/img/race-day/` (the
+originals stay in `_runtime/mmo-shot-*.png`).
+
+### 1. Hub entry
+
+The RACE DAY card on `/welcome` is primary next to 2P LOUNGE; the shell top bar
+has the RACE DAY button, `/games` has the CTA, and `/multiplayer` carries the
+"want more than one rival?" footer.
+
+<figure>
+  <img src="/docs/img/race-day/race-day-hub.png" alt="The WELCOME TO RIDGE CITY hub with the RACE DAY card as the primary entry, above the four team cards" />
+  <figcaption>The hub: RACE DAY is the primary card, 2P LOUNGE is still one click away.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/race-day/race-day-shell.png" alt="Race Day running inside the cabinet shell iframe with a single top bar" />
+  <figcaption>Inside the shell: one top bar, the soundtrack keeps playing, the room fills the iframe.</figcaption>
+</figure>
+
+### 2. Lobby: THE GRID and LFG
+
+The event header (`RACE DAY #n`, seated/max, track, clock, LOBBY pill, link
+state), the 50-slot team-coloured grid with ALL/SOL/PAC/MAP/DIG/BOTS filters, and
+the LFG panel: callsign, queue position, fill meter with the `MIN` marker, ETA,
+START WITH n, bots, watch-only, and the party code with COPY INVITE LINK.
+
+<figure>
+  <img src="/docs/img/race-day/race-day-lobby.png" alt="Race Day lobby at 37 of 50 seats: 50-slot grid on the left, LFG panel in the middle, standings on the right" />
+  <figcaption>Filling: 37/50, queue position 12, ETA, and the seat you will get.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/race-day/race-day-party.png" alt="LFG panel with a party code, invite link and the bots toggle" />
+  <figcaption>Party of two: one code, one invite link, both members land in the same race.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/race-day/race-day-lobby-mobile.png" alt="Race Day lobby on a 390 by 844 phone viewport" />
+  <figcaption>Phone layout: LFG card first, top-10 board, the 50 slots collapse to a 5-column grid.</figcaption>
+</figure>
+
+### 3. GRID LOCKED and the countdown
+
+The plan is frozen and shown: course, car class, your seat and team. The
+`3 → 2 → 1 → GO` overlay counts down from the shared `startsAt` instant.
+
+<figure>
+  <img src="/docs/img/race-day/race-day-grid.png" alt="Grid locked at 50 of 50 with the course and car class shown" />
+  <figcaption>GRID LOCKED: 50/50, one course and one car class for every driver.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/race-day/race-day-countdown.png" alt="The GO overlay on top of the Race Day page" />
+  <figcaption>GO — the same instant for every seat, from the server clock.</figcaption>
+</figure>
+
+### 4. Racing: the standings board and the HUD
+
+On `/race-day` the board shows position, driver, team, lap, time and the gap to
+the car ahead (a lap-up car ahead is a lap gap, not a time gap); the feed adds at
+most one line per second. Inside `/play` the HUD shows `P n / 50`, `LAP n ·
+time · BEST`, gap chips to the car ahead and behind, a collapsible mini board
+(`M` / the toggle), a telemetry-source label, and a FINISHED card that links back
+to `/race-day`.
+
+<figure>
+  <img src="/docs/img/race-day/race-day-standings.png" alt="Live standings during a race: top ten plus the highlighted you-row with position, lap, time and gap" />
+  <figcaption>Live board, top 10 + your row, gaps to the car ahead; a lapped car shows a lap gap.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/race-day/race-day-hud.png" alt="The in-race HUD on the game canvas: position chip, lap, time, best lap and gap chips" />
+  <figcaption>The in-race HUD on `/play?mmo=1`: `P7 / 50`, lap, time, best, gaps.</figcaption>
+</figure>
+
+### 5. Results and the spectator board
+
+50 rows with your row pinned and highlighted, top-three podium strip, and the
+next-race clock. The spectator view is the same board without a seat.
+
+<figure>
+  <img src="/docs/img/race-day/race-day-results.png" alt="Results table with fifty rows, a podium strip and your row highlighted" />
+  <figcaption>Results: 50 rows, podium, your row pinned, next race in 00:20.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/race-day/race-day-spectate-mobile.png" alt="Spectator board on a phone: top twelve with gaps and a lead-change line" />
+  <figcaption>Spectating on a phone: 12 rows, lead-change line, no seat and no telemetry.</figcaption>
+</figure>
+
+## How the race is timed
+
+The clock is read out of the emulated PSX RAM, not a page timer. The confirmed
+fields and the ground-truth check are in `_runtime/analysis/14-ram-telemetry.md`.
+
+| Field | Address | Encoding | Reads as |
+| --- | --- | --- | --- |
+| Race clock | `0x800F4E2F` | 32-bit little-endian, **unaligned** | 1 count = 1 ms of race time |
+| Race clock, mirrored | `0x8010C24F` | 32-bit little-endian, unaligned | identical value; a mismatch means a stale or partial read |
+| Speed | `0x800AC0EE` | 16-bit little-endian, 8.8 fixed point | km/h = raw / 64 (mph = raw / 102.4), ±10 % against the HUD |
+
+Clock semantics, as measured:
+
+- `0xFFFFFFFF` — the track is loading **or** the game is on the results screen.
+- `0` — the grid, before the car rolls.
+- `> 0` — racing; the value is total race time in ms and never resets per lap.
+
+**Finish rule.** A driver is finished when the clock was live and then reads
+`0xFFFFFFFF` (the game has switched to its result screen), or when the client
+sends an explicit `finish`. `0` at the grid is not a finish. The HUD reads RAM
+first and only falls back to a stopwatch if the label-table anchor cannot find a
+moving clock. The in-game clock pins at `599 999 ms` (`9:59.999`), so a race
+longer than ten minutes reports a capped time — the server's `RACE_TIMEOUT_MS`
+default of 600 000 ms matches that ceiling.
+
+**The honest gap: the lap counter is unconfirmed.** The probe never completed a
+3.26-mile lap inside its window, so no lap address is documented as fact. The
+protocol is ready for a lap (`lap` 1..99), standings sort is lap descending then
+`raceTimeMs` ascending, and the HUD never invents a lap — `lapSource` records
+where the number came from. Treat "LAP 2" on a board as client-reported until a
+lap address is confirmed.
+
+Two more scoped details:
+
+- `mmo-hud.js` is RAM-first: it anchors the live PSX window on the R4 label table
+  (`0x800A2180`), adopts a base only when the clock moves, and accepts a clock
+  that advances about 1 count per emulated millisecond (measured 1007 counts per
+  wall second, 1002 per emulated frame, 8/8 live samples). It falls back to a
+  **stopwatch started at GO** (`startsAt`) and says `stopwatch` only when no
+  anchored clock is found. The 41/41 two-browser run held the `/rom` request, so
+  its HUD screenshot is labelled `TELEM STOPWATCH` — that is the fallback working,
+  not a RAM claim.
+- The PSX 2 MiB RAM block moves inside the WASM heap, so the reader locates it by
+  the main-menu label table at `0x800A2180` at boot, revalidates after a console
+  restart, and caches the offset for the session.
+
+## Scale and limits
+
+Measured twice at 550 seats with `RR4_MMO_MAX=550` on a throwaway instance; the
+saved evidence is `_runtime/mmo-load-550-single.json` (12/12 gates) and
+`_runtime/mmo-load.json` / `_runtime/mmo-load-550-ramp.json`.
+
+| Path | Measured at 550 | Budget |
+| --- | --- | --- |
+| Sockets / seats | 550 connected in 207 ms, 550 seated in 2.3 s, 0 unexpected closes | connect ≤ 10 s |
+| Standings cadence | median 1.95 Hz (1.93–1.95 across runs); per-client 1.40–2.60 | 2 Hz ± 30 % |
+| Standings inter-arrival | p95 528 ms (527–528), p99 530–531 ms | p95 ≤ 600 ms, p99 ≤ 1500 ms |
+| Grid frame | max 1,973 B (1966–1973) | ≤ 2,048 B |
+| Standings frame | max 1,290 B in the saved single run (≤ 1,497 B across the load runs), ≤ 11 rows | ≤ 1,536 B, ≤ 64 rows |
+| Total egress at 550 | **~1.1 MB/s** in the ramp run (1,081,031 B/s); 1.37 MB/s in the single-550 run | — |
+| Drops / errors | 0 unexpected closes, 0 socket errors, 0 `bad_telemetry`, 0 dropped frames | 0 |
+
+**550 was proven with synthetic sockets**, not 550 humans and not 550 browser
+cores: the load probe opens 550 plain WebSocket clients and sends plausible
+telemetry at 4 Hz. No 550-core browser run exists. **50 is the MVP target**, and
+500 is the architecture target — the server takes `RR4_MMO_MAX` up to 1000, the
+wire stays top-N + self + neighbours, and the rendered grid is capped at 50
+slots (seats above the first 50 are seated and ranked but have no grid row).
+
+The 4-step ramp file (`mmo-load.json`) says `FAIL` overall only because its 50 /
+150 / 300 steps opened their measurement windows before any standings frame
+existed — the race had not started yet. The 550 step passed all 12 gates in both
+runs. Do not quote "48/48".
+
+Other evidence at the same scale: `/mmo` protocol **12/12**
+(`_runtime/mmo-protocol.json`), two-browser UX **41/41**
+(`_runtime/mmo-e2e.json`), screenshot harness **24/24** (26 with `--live`)
+(`_runtime/mmo-shots.json`).
+
+## Running it
+
+The event server is part of the cabinet process; there is no separate port.
+
+```powershell
+cd _server
+node src/server.js
+# Race Day:      http://localhost:8080/race-day
+# status:        http://localhost:8080/api/mmo/status
+# socket:        ws://localhost:8080/mmo
+```
+
+All timings are environment-overridable so a whole race day fits in a test:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `RR4_MMO_MAX` | `50` | grid size (capped at 1000; 550 is what the load probe proved) |
+| `RR4_MMO_MIN` | `4` | queued drivers required before a race can start |
+| `RR4_MMO_FILL_MS` | `60000` | LFG fill window; expires, then rolls over if still short of `min` |
+| `RR4_MMO_GRID_MS` | `5000` | GRID LOCKED assemble time before the countdown |
+| `RR4_MMO_COUNTDOWN_MS` | `3000` | 3-2-1 window (`startsAt = now + this`) |
+| `RR4_MMO_RESULTS_MS` | `20000` | results screen before the next event's lobby |
+| `RR4_MMO_RACE_TIMEOUT_MS` | `600000` | force results if not everyone finishes |
+| `RR4_MMO_HEARTBEAT_MS` | `20000` | ping/terminate window for silent sockets |
+| `RR4_MMO_BOTS` | unset | `1` fills empty seats with labelled demo bots |
+| `RR4_MMO_SLOW_BACKLOG` | `65536` | `bufferedAmount` above which a socket skips a standings tick |
+
+Routes and sockets:
+
+| Path | What it is |
+| --- | --- |
+| `/race-day` | the Race Day page (`?party=CODE`, `?spectate=1`, `?bots=1`, `?embedded=1` inside the shell) |
+| `WS /mmo` | `hello`/`queue`/`unqueue`/`party:*`/`seat`/`telemetry`/`finish`/`start`/`spectate`/`chat`/`config` in; `welcome`/`event`/`grid`/`queue`/`countdown`/`standings`/`result`/`party`/`feed`/`error`/`pong` out |
+| `GET /api/mmo/status` | event id/index/state/plan, `counts{seated,queued,max,connected,bots}`, `clients`, `p50BroadcastMs`, `max`, `min` |
+| `/play?mmo=1&event&seat&team&game=r4&threads=0` | the same race with the Race Day HUD mounted |
+
+The 550-seat run needs an instance with the larger cap. Start a throwaway one
+and point the probe at it:
+
+```powershell
+cd _server
+$env:RR4_MMO_MAX = "550"; $env:RR4_PORT = "8098"
+node src/server.js
+# in a second shell:
+node mmo-load-probe.mjs --drivers 550 --base ws://127.0.0.1:8098/mmo
+```
+
+## Verify Race Day
+
+```powershell
+cd <repo>
+node _server/mmo-protocol-test.mjs          # 12 checks; probes :8097 (--base overrides)
+node _server/mmo-load-probe.mjs --drivers 550   # needs an instance started with RR4_MMO_MAX=550
+node _server/test-mmo-ui.mjs                # spawns its own cabinet on :8093, two browsers
+node _server/mmo-shots.mjs                  # needs :8080; add --live for one real-socket capture
+
+cd docs
+npm run build
+npm run verify
+```
+
+The protocol probe and the load probe are read-only against an already-running
+instance and never restart it; `test-mmo-ui.mjs` starts and kills only its own
+`:8093` child. Evidence lands in `_runtime/mmo-protocol.json`,
+`_runtime/mmo-load*.json`, `_runtime/mmo-e2e.json` +
+`_runtime/mmo-e2e-*.png`, and `_runtime/mmo-shots.json` +
+`_runtime/mmo-shot-*.png`.
+
+Check the live pages: [Race Day](http://localhost:8080/race-day),
+[`/api/mmo/status`](http://localhost:8080/api/mmo/status), and
+[this page](http://localhost:8080/docs/multiplayer/race-day).
+
+## Limits and things not to claim
+
+- **Bots are bots.** `?bots=1` seats bots with a slower synthetic telemetry
+  stream, labelled `BOT`. Never present a bot-filled grid as a human race.
+- **Two browsers is two contexts on one host**, not two machines. The 41/41 run
+  proves the user path, party invite, spectate and HUD mount — not 50 players.
+- **550 is synthetic sockets.** It proves the fan-out, cadence and frame budgets;
+  it does not prove 550 browser cores, 550 humans, or a LAN of 550 consoles.
+- **No video or audio relay.** Drivers run their own core, and spectators read
+  the standings — there is no host stream for them to watch. The 2P netplay
+  guest-audio gap is documented separately in
+  [R4 2P LAN netplay](/multiplayer/r4-2p).
+- **No persistence.** Events live in memory: a server restart is a new race day
+  (event index restarts, seats and results are gone).
+- **Telemetry is client-reported.** The server clamps `lap` 1..99,
+  `raceTimeMs` 0..3,600,000 and `speedKph` 0..400, refuses a backwards clock, and
+  derives position itself, but it cannot stop a modified client from lying inside
+  those bounds. There is no anti-cheat.
+- **No ghost cars.** The board shows gaps; there are no opponent meshes on track.
+- **The lap number is unconfirmed RAM** (see above); the HUD labels where the
+  number came from and may be running on its stopwatch fallback.
+- **The HUD handoff is a URL, not a button.** `/race-day` shows your event id and
+  seat; nothing navigates a tab to `/play?mmo=…` automatically yet. The HUD's
+  FINISHED card does link back to `/race-day`.
+- **The grid renders 50 slots.** Raising `RR4_MMO_MAX` above 50 adds seats and
+  standings rows, not grid rows.
+- Expected console noise, never "0 console errors": the
+  `[NETPLAY] No ICE servers configured` line and the React #418 hydration warning
+  on `/docs/introduction`. COOP/COEP is sent on loopback/HTTPS only; a plain-HTTP
+  LAN origin isolates nothing and logs no COOP warning.
+
+## Related
+
+- [2P Lounge and race handoff](/multiplayer/lounge) — the 1v1 VS Battle room
+- [R4 2P LAN netplay](/multiplayer/r4-2p) — relay, WebRTC, guest limits
+- [LAN multiplayer](/multiplayer/lan) — ports and one-subnet rules
+- [Browser arcade](/play/browser) — the `/play` core the HUD rides on
+- [Performance and networking](/play/performance) — measured transport numbers
+- [Architecture](/engineering/architecture) — where `/mmo` sits

@@ -1,0 +1,55 @@
+{
+  "host": "0.0.0.0",
+  "httpPort": 8080,
+  "roomName": "RIDGE RACER TYPE 4 // LAN",
+  "split": "vertical",
+  "game": {
+    "exe": "game/Ridge_Racer_4_Recompiled.exe",
+    "bios": "game/bios/openbios.bin",
+    "disc": "../disc/R4 - Ridge Racer Type 4 (USA).cue",
+    "workingDir": "../disc",
+    "memcardDir": "../_runtime/web-memcards",
+    "logFile": "../_runtime/web-cabinet.log",
+    "windowTitle": "RR4-LAN",
+    "width": 656,
+    "height": 519,
+    "captureX": 8,
+    "captureY": 31,
+    "captureW": 640,
+    "captureH": 480,
+    "fps": 60,
+    "renderer": "opengl",
+    "attach": false,
+    "attachPid": 0,
+    "autoRestart": true,
+    "restartDelayMs": 2500,
+    "windowWaitMs": 45000
+  },
+  "ffmpeg": "../_tools/ffmpeg/bin/ffmpeg.exe",
+  "python": "py",
+  "tls": {
+    "enabled": false,
+    "port": 8443,
+    "cert": "certs/rr4-cert.pem",
+    "key": "certs/rr4-key.pem"
+  },
+  "netplay": {
+    "relayUrl": "",
+    "relayPort": 3010
+  },
+  "stream": {
+    "source": "capture",
+    "width": 960,
+    "height": 720,
+    "fps": 60,
+    "bitrate": "4M",
+    "maxrate": "5M",
+    "bufsize": "3M",
+    "gop": 30,
+    "audio": true,
+    "audioBitrate": "128k",
+    "audioScript": "src/audio.py",
+    "testFile": "../_runtime/capture-test.ts",
+    "bufferBytes": 400000
+  }
+}

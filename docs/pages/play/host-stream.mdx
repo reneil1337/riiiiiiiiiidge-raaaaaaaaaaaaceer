@@ -1,0 +1,176 @@
+---
+title: Host-stream cabinet
+description: The original fallback — one native game window, ffmpeg capture, jsmpeg delivery, two seats.
+---
+
+Before the browser arcade, the cabinet worked the way an arcade cabinet actually
+works: **one machine runs the game**, and the players share it. The native
+recompilation runs on the host, ffmpeg captures its client area, and jsmpeg
+plays the MPEG-TS stream in every browser. Input comes back over a WebSocket and
+is injected into the game's real 2P split-screen mode.
+
+The page is served at **`/lobby`**. The default `/` is the ENTER shell, which
+does not capture or stream anything.
+
+<div className="rr-route"><b>native Ridge Racer Type 4</b>  (2P split-screen, OpenGL, title RR4-LAN)
+        │
+        ├─ Win32 client rect  (GetClientRect + ClientToScreen)
+        │       └─ ffmpeg gdigrab ── MPEG-1 + MP2 ── MPEG-TS
+        │                                            │
+        │                                      WebSocket /stream
+        │                                            │
+        │                                       jsmpeg in browser
+        │
+        └─ two native keyboard pads  (game/keybinds.ini)
+                 ▲
+                 │ keybd_event (foreground window)
+            Node input relay
+                 ▲
+                 │ WebSocket /ws  (PSX pad word per seat)
+        browser P1 / P2 / spectators</div>
+
+## When to use it
+
+| Use `/play` when… | Use `/lobby` when… |
+| --- | --- |
+| You want each player to render locally | You want the native picture on a big screen |
+| You do not want a host game window | You want spectators to watch the same cabinet |
+| The host desktop can stay free | You already have the native game + ffmpeg configured |
+| You are on phones/laptops | You want the fallback that is known-good |
+
+The browser path is primary. The fallback lives in the **old lobby at
+`/lobby`** — not at `/`, which is the ENTER shell. The shell's **LOBBY** button
+loads `/lobby` inside the cabinet frame; the lobby is still the proof that the
+native 2P mode works.
+
+## Start
+
+```powershell
+cd _server
+start.bat
+```
+
+`start.bat` starts the web server **and** the native cabinet, attaches to an
+existing `RR4-LAN` window instead of launching a second one, and starts the
+netplay relay on 3010.
+
+Open:
+
+```text
+http://<host-lan-ip>:8080/lobby
+```
+
+Or open `/`, press ENTER, and use the **LOBBY** button in the shell top bar.
+
+<div className="rr-actions">
+  <a className="rr-btn rr-btn--primary" href="/lobby">Open the lobby</a>
+  <a className="rr-btn" href="/">Cabinet ENTER</a>
+  <a className="rr-btn rr-btn--ghost" href="/docs/play/browser">Browser arcade</a>
+</div>
+
+### Test mode
+
+```powershell
+start-test.bat
+```
+
+Sets `RR4_NO_AUTOSTART=1` and `RR4_STREAM_SOURCE=test`, looping
+`_runtime/capture-test.ts`. No native game is launched. Useful for UI work and
+for serving `/play` without taking over the desktop.
+
+### Attach mode
+
+`RR4_ATTACH=1` attaches to an already-running `RR4-LAN` window. In
+`_server/config.json` the equivalent keys are `game.attach` and `game.attachPid`;
+the PID can also come from the `RR4_ATTACH_PID` environment variable (there is no
+`attachPid` env var). Attach mode never spawns or auto-restarts. It still resizes,
+pins, focuses and captures the existing window. The **RESTART CABINET** control
+starts a new managed instance.
+
+## Seats, host and reconnect
+
+- **P1 / P2** are real seats in the native split-screen race.
+- Extra viewers are **spectators**.
+- A disconnected driver keeps a short reconnect grace (about 5 s) before another
+  player may take the seat; the seat record clears after about 20 s.
+- The host can restart the cabinet from the lobby — the **RESTART CABINET**
+  control, not just the race.
+
+## Input relay
+
+Each browser seat sends an active-low PSX pad word over `/ws`. The server maps it
+to the hard-coded P1/P2 VK tables in `_server/src/input.js` (it does **not** read
+`game/keybinds.ini` at runtime — that file belongs to the native game) and injects
+the keys with `keybd_event` into the foreground game window. Input is capped
+around 250 Hz; the client resends its current mask every 250 ms as a heartbeat.
+
+This is a **shared-cabinet input relay**, not rollback netcode. The game supplies
+the race; the browser layer supplies the seats and transport.
+
+## Video and audio
+
+- **Video:** ffmpeg `gdigrab` on the runtime client area, scaled to 960×720,
+  MPEG-1 at 4 Mbps target / 5 Mbps max, GOP 30, up to 60 fps.
+- **Audio:** WASAPI loopback of the default speaker, encoded as MP2 at 128 kbps.
+  If the Python helper is unavailable, the stream falls back to video-only.
+- **Capture geometry:** the server reads the real client rectangle with
+  `GetWindowRect`, `GetClientRect` and `ClientToScreen`; it is not a fixed
+  desktop crop.
+- **Window style:** the native frame is kept. The server only moves/resizes and
+  keeps it topmost; it does not switch to `WS_POPUP` in production.
+
+## Configuration
+
+`_server/config.json` controls the cabinet:
+
+```json
+{
+  "game": {
+    "exe": "game/Ridge_Racer_4_Recompiled.exe",
+    "bios": "game/bios/openbios.bin",
+    "disc": "../disc/R4 - Ridge Racer Type 4 (USA).cue",
+    "workingDir": "../disc",
+    "windowTitle": "RR4-LAN",
+    "width": 656,
+    "height": 519,
+    "fps": 60,
+    "renderer": "opengl",
+    "attach": false,
+    "autoRestart": true
+  },
+  "stream": {
+    "width": 960,
+    "height": 720,
+    "fps": 60,
+    "bitrate": "4M",
+    "maxrate": "5M",
+    "audio": true
+  }
+}
+```
+
+## Limits
+
+- The host game window must stay **foreground**; `keybd_event` is a global input
+  path, and host keyboard use can reach the game.
+- The capture is a screen region of the host desktop covering the game's client
+  area — not the whole desktop — so keep the cabinet window unobstructed.
+- Audio follows the host's default speaker; changing devices needs a restart.
+- Attach mode depends on a known title/PID and does not watch or restart the
+  process.
+- Two drivers is the game limit in this mode. Two pads in one browser are local
+  two-player; LAN versus needs netplay. For a browser-based two-player race, use
+  the [2P lounge](/multiplayer/lounge).
+
+## Why not `recomp-net`?
+
+The release binary contains the netplay UI and strings, but the `rnet_*`
+implementation is compiled out. Starting a direct match returns:
+
+```text
+psxrecomp: netplay start failed (-1) — built without recomp-net, or bind/peer invalid
+```
+
+Rather than rebuild the whole game, the fallback relays browser seats into the
+game's real 2P split-screen mode. The REA evidence for this is in
+[REA evidence](/engineering/rea).

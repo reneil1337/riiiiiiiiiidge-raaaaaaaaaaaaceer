@@ -1,0 +1,344 @@
+/* Race Day — in-race HUD overlay for /play?mmo=1.
+ *
+ * Loaded only when ?mmo=1 (play.js injects the <link>), so /play is unchanged
+ * otherwise. Everything is scoped to #mmoHud / .mmo-hud-*; nothing here touches
+ * play.css rules, the EmulatorJS canvas or the shell's one-top-bar contract.
+ *
+ * The box is positioned from #game's measured rect by mmo-hud.js, so embedded
+ * (?embedded=1 inside the shell iframe), standalone and body.fs fullscreen all
+ * line up without duplicating play.css sizing. Root is pointer-events:none —
+ * only the toggle and the finish link are hit-testable.
+ *
+ * Contract: _runtime/analysis/20-mmo-contract.md §4.3, §8. */
+
+#mmoHud {
+  --hud-bg: rgba(8, 9, 14, .78);
+  --hud-bg-2: rgba(12, 14, 21, .9);
+  --hud-line: rgba(255, 255, 255, .16);
+  --hud-text: #f2f3f7;
+  --hud-muted: #9aa0ae;
+  --hud-accent: #e10600;
+  --hud-ahead: #ffd166;
+  --hud-behind: #6ef2a2;
+  --hud-slow: #ff9f1c;
+  --hud-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  box-sizing: border-box;
+  color: var(--hud-text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  contain: layout style;
+}
+
+#mmoHud[hidden] { display: none !important; }
+#mmoHud * { box-sizing: border-box; }
+
+#mmoHud[data-live="0"] .mmo-hud-wrap { opacity: .55; }
+
+.mmo-hud-wrap {
+  position: absolute;
+  inset: 0;
+  transition: opacity .3s ease;
+}
+
+/* ---------------------------------------------------------------- chips ---- */
+
+.mmo-hud-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+}
+
+.mmo-hud-pos {
+  display: inline-block;
+  padding: 5px 10px;
+  border: 1px solid var(--hud-line);
+  border-left: 3px solid var(--hud-accent);
+  border-radius: 3px;
+  background: var(--hud-bg);
+  color: var(--hud-text);
+  font-family: var(--hud-mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+}
+
+.mmo-hud-toggle {
+  pointer-events: auto;
+  padding: 5px 9px;
+  border: 1px solid var(--hud-line);
+  border-radius: 3px;
+  background: var(--hud-bg);
+  color: var(--hud-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.mmo-hud-toggle:hover { color: var(--hud-text); border-color: rgba(255, 255, 255, .34); }
+.mmo-hud-toggle.is-open { color: var(--hud-text); background: var(--hud-bg-2); border-color: rgba(255, 255, 255, .34); }
+.mmo-hud-toggle:focus-visible {
+  outline: 2px solid #29d3ff;
+  outline-offset: 2px;
+}
+
+.mmo-hud-slow {
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 159, 28, .7);
+  border-radius: 3px;
+  background: rgba(255, 159, 28, .18);
+  color: var(--hud-slow);
+  font-family: var(--hud-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  animation: mmo-hud-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mmo-hud-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+/* ----------------------------------------------------------------- clock ---- */
+
+.mmo-hud-clock {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--hud-line);
+  border-radius: 3px;
+  background: var(--hud-bg);
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+}
+
+.mmo-hud-lap { color: var(--hud-muted); }
+.mmo-hud-time { color: var(--hud-text); font-weight: 700; font-size: 14px; }
+.mmo-hud-best { color: var(--hud-ahead); font-size: 11px; }
+.mmo-hud-dot { color: rgba(255, 255, 255, .3); }
+
+/* ------------------------------------------------------------------ gaps ---- */
+
+.mmo-hud-gaps {
+  position: absolute;
+  top: 46px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.mmo-hud-gap {
+  padding: 3px 8px;
+  border: 1px solid var(--hud-line);
+  border-radius: 3px;
+  background: var(--hud-bg);
+  font-family: var(--hud-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.mmo-hud-gap-ahead { color: var(--hud-ahead); }
+.mmo-hud-gap-behind { color: var(--hud-behind); }
+
+/* ----------------------------------------------------------------- board ---- */
+
+.mmo-hud-board {
+  position: absolute;
+  top: 52px;
+  left: 12px;
+  width: min(240px, calc(100% - 24px));
+  max-height: calc(100% - 72px);
+  overflow: hidden auto;
+  border: 1px solid var(--hud-line);
+  border-radius: 4px;
+  background: var(--hud-bg-2);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .6);
+  animation: mmo-hud-drop .16s ease-out;
+}
+
+@keyframes mmo-hud-drop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.mmo-hud-board-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--hud-line);
+  color: var(--hud-muted);
+  font-family: var(--hud-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.mmo-hud-board-list {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.mmo-hud-board-row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 9px;
+  font-family: var(--hud-mono);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.mmo-hud-board-row.is-you {
+  background: rgba(225, 6, 0, .22);
+  box-shadow: inset 3px 0 0 var(--hud-accent);
+  color: #fff;
+}
+
+.mmo-hud-board-pos { color: var(--hud-muted); }
+.mmo-hud-board-row.is-you .mmo-hud-board-pos { color: #fff; }
+.mmo-hud-board-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: .04em;
+}
+.mmo-hud-board-name[data-bot="1"] { color: #8d93a3; font-style: italic; }
+.mmo-hud-board-time { color: var(--hud-text); }
+
+/* ---------------------------------------------------------------- finish ---- */
+
+.mmo-hud-finish {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px;
+  border: 1px solid rgba(225, 6, 0, .55);
+  border-radius: 6px;
+  background: rgba(8, 9, 14, .9);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .7);
+  text-align: center;
+  pointer-events: auto;
+}
+
+.mmo-hud-finish-title {
+  font-family: var(--hud-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--hud-text);
+  white-space: nowrap;
+}
+
+.mmo-hud-finish-link {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 3px;
+  background: var(--hud-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.mmo-hud-finish-link:hover { background: #ff2a20; }
+.mmo-hud-finish-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- source ---- */
+
+.mmo-hud-source {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 2px;
+  background: rgba(8, 9, 14, .6);
+  color: var(--hud-muted);
+  font-family: var(--hud-mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+.mmo-hud-source[data-source="ram"] { color: var(--hud-behind); border-color: rgba(110, 242, 162, .35); }
+.mmo-hud-source[data-source="stopwatch"] { color: var(--hud-ahead); border-color: rgba(255, 209, 102, .35); }
+
+/* ------------------------------------------------- 960x720 … small boxes ---- */
+
+#mmoHud[data-compact="1"] .mmo-hud-top { top: 6px; left: 6px; gap: 5px; }
+#mmoHud[data-compact="1"] .mmo-hud-pos { padding: 3px 6px; font-size: 11px; border-left-width: 2px; }
+#mmoHud[data-compact="1"] .mmo-hud-toggle { padding: 3px 6px; font-size: 8px; letter-spacing: .1em; }
+#mmoHud[data-compact="1"] .mmo-hud-slow { padding: 2px 5px; font-size: 8px; }
+#mmoHud[data-compact="1"] .mmo-hud-clock { top: 6px; right: 6px; padding: 3px 6px; font-size: 9px; gap: 4px; }
+#mmoHud[data-compact="1"] .mmo-hud-time { font-size: 11px; }
+#mmoHud[data-compact="1"] .mmo-hud-best { font-size: 9px; }
+#mmoHud[data-compact="1"] .mmo-hud-gaps { top: 30px; right: 6px; gap: 3px; }
+#mmoHud[data-compact="1"] .mmo-hud-gap { padding: 2px 5px; font-size: 9px; }
+#mmoHud[data-compact="1"] .mmo-hud-board {
+  top: 32px;
+  left: 6px;
+  width: min(176px, calc(100% - 12px));
+  max-height: calc(100% - 44px);
+}
+#mmoHud[data-compact="1"] .mmo-hud-board-head { padding: 4px 6px; font-size: 8px; }
+#mmoHud[data-compact="1"] .mmo-hud-board-row { grid-template-columns: 26px 1fr auto; padding: 2px 6px; font-size: 9px; gap: 4px; }
+#mmoHud[data-compact="1"] .mmo-hud-finish { padding: 10px 12px; gap: 6px; }
+#mmoHud[data-compact="1"] .mmo-hud-finish-title { font-size: 11px; }
+#mmoHud[data-compact="1"] .mmo-hud-finish-link { padding: 6px 10px; font-size: 9px; }
+#mmoHud[data-compact="1"] .mmo-hud-source { left: 6px; bottom: 5px; font-size: 8px; }
+
+/* The shell hides #play-bar/#play-foot in embedded mode and body.fs hides them
+ * standalone, so the HUD never needs to reserve space for them — but in body.fs
+ * the stage is black and the chips get a little more breathing room. */
+body.fs #mmoHud .mmo-hud-top { top: 14px; left: 14px; }
+body.fs #mmoHud .mmo-hud-clock { top: 14px; right: 14px; }
+
+@media (max-width: 560px) {
+  #mmoHud .mmo-hud-clock { font-size: 10px; }
+  #mmoHud .mmo-hud-time { font-size: 12px; }
+}
+
+/* --------------------------------------------------------- reduced motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  #mmoHud .mmo-hud-wrap,
+  #mmoHud .mmo-hud-board { transition: none !important; animation: none !important; }
+  #mmoHud .mmo-hud-slow { animation: none !important; }
+}

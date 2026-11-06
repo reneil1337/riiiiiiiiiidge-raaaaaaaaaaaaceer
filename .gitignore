@@ -1,0 +1,30 @@
+# --- user-supplied / vendored, not source -------------------------------------
+/disc/
+/_download/
+/*.7z
+/_server/public/music/
+/_server/public/emulator/
+/_server/public/emulator43/
+
+# --- runtime -------------------------------------------------------------------
+/_runtime/
+/_server/game/overlay_captures.json.d/
+/certs/
+*.log
+*.out
+
+# --- deps / build --------------------------------------------------------------
+**/node_modules/
+/docs/dist/
+/docs/.zudoku/
+
+# The Zudoku manual (docs/) is part of this tree: pages/, public/, scripts/ and
+# the config are tracked. Only its build output and dependencies are ignored.
+
+# --- os / editor ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+
+# --- vendored tool binaries (re-downloadable, >100 MB) ---------------------------
+/_tools/ffmpeg/bin/

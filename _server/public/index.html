@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08090d">
+<title>Ridge Racer Type 4 // LAN Arcade</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23e10600'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Arial Black,Arial' font-size='34' font-style='italic' fill='white'%3ER4%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="bg" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="bg-glow red"></div>
+  <div class="bg-glow cyan"></div>
+  <div class="bg-noise"></div>
+</div>
+
+<header id="topbar" class="topbar">
+  <a class="brand" href="#" id="brandHome" aria-label="Ridge Racer Type 4 LAN Arcade">
+    <span class="brand-r4">R4</span>
+    <span class="brand-copy"><b>RIDGE RACER</b><i>TYPE 4 // LAN</i></span>
+  </a>
+  <div class="top-stats">
+    <span id="nativePill" class="pill native">NATIVE / BROWSER</span>
+    <span id="cabinetPill" class="pill"><span class="dot"></span><span id="cabinetPillText">BOOTING</span></span>
+    <span id="viewerPill" class="pill">0 WATCHING</span>
+    <span id="pingPill" class="pill">-- MS</span>
+    <span id="padPill" class="pill">KEYBOARD</span>
+  </div>
+  <div class="top-actions">
+    <button id="btnSound" class="icon-btn" title="Toggle sound (M)" aria-label="Toggle sound">SOUND</button>
+    <button id="btnHelp" class="icon-btn" title="Controls (H)" aria-label="Controls">?</button>
+    <button id="btnFullscreen" class="btn ghost small" title="Fullscreen (F)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      FULLSCREEN
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- ================= LANDING ================= -->
+  <section id="landing" class="view landing">
+    <div class="landing-grid">
+      <div class="hero">
+        <div class="kicker"><span class="live-dot"></span> NAMCO // 1998 // NATIVE BROWSER CABINET</div>
+        <h1 class="wordmark">
+          <span class="ridge">RIDGE</span>
+          <span class="racer">RACER</span>
+          <span class="type">TYPE <b>4</b></span>
+        </h1>
+        <div class="tagline">RUNS IN YOUR BROWSER. ZERO INSTALLS.</div>
+        <p class="blurb">
+          The real <b>Ridge Racer Type 4</b> now runs locally in this browser tab through
+          <b>EmulatorJS</b> — no host instance and no video stream required. Plug in an Xbox
+          or PlayStation pad and race. The live LAN cabinet is still here as a fallback.
+        </p>
+
+        <div class="native-cta">
+          <a id="playBrowserBtn" class="btn primary big native-play" href="/play">
+            <span class="native-play-glyph" aria-hidden="true">▶</span>
+            <span class="native-play-copy">
+              <b>PLAY IN BROWSER</b>
+              <i>EMULATORJS // NO INSTALL // NO HOST</i>
+            </span>
+            <span class="native-play-arrow" aria-hidden="true">→</span>
+          </a>
+          <div class="native-note" id="nativeNote">
+            <span class="native-badge"><span class="dot"></span> NATIVE / IN-BROWSER</span>
+            <p>
+              The game runs locally on EmulatorJS inside your browser. No host PC, no
+              running cabinet instance, and no video stream are needed to play.
+            </p>
+          </div>
+        </div>
+
+        <div class="join-panel">
+          <div class="join-top">
+            <span class="join-tag">STREAM FALLBACK</span>
+            <span class="join-serial">LIVE CABINET 01 // R4-LAN</span>
+          </div>
+          <div class="join-body">
+            <label for="nameInput">DRIVER NAME</label>
+            <div class="join-row">
+              <input id="nameInput" maxlength="16" autocomplete="nickname" placeholder="PLAYER" aria-label="Driver name">
+              <button id="joinBtn" class="btn secondary big">WATCH CABINET</button>
+            </div>
+            <button id="fsLanding" class="btn ghost fullscreen-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+              <span>WATCH CABINET / FULLSCREEN</span>
+              <kbd>F</kbd>
+            </button>
+            <div class="landing-status">
+              <span id="landingLive" class="live-dot"></span>
+              <span id="landingStatus">CABINET BOOTING…</span>
+              <span id="landingViewers"></span>
+            </div>
+            <div class="join-qr">
+              <img src="/img/lan-qr.svg" alt="QR code for this LAN cabinet">
+              <div><b>SCAN TO JOIN</b><span>Same Wi-Fi / LAN</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-strip">
+          <div><b>2P</b><span>split-screen versus</span></div>
+          <div><b>PAD</b><span>Xbox + PlayStation</span></div>
+          <div><b>LOCAL</b><span>runs in this tab</span></div>
+          <div><b>0</b><span>downloads</span></div>
+        </div>
+      </div>
+
+      <div class="landing-preview">
+        <div class="preview-frame">
+          <div class="preview-marquee">
+            <span><b>RIDGE RACER</b> TYPE 4</span>
+            <span class="preview-marquee-side">NAMCO // 1998</span>
+          </div>
+          <div class="preview-screen" id="landingScreen">
+            <canvas id="landingCanvas"></canvas>
+            <div class="preview-scan"></div>
+            <div class="preview-badge"><span class="live-dot"></span> LIVE CABINET // FALLBACK</div>
+            <div id="previewBoot" class="preview-boot">CABINET BOOTING<span class="spinner"></span></div>
+          </div>
+          <div class="preview-meta"><span>R4 // SLUS-00797</span><span>60 FPS // 2 PLAYERS</span></div>
+        </div>
+        <div class="preview-note">This stream is the live-cabinet fallback. If it looks stuck, the host cabinet is booting or restarting — <b>PLAY IN BROWSER</b> is always available.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ARCADE ================= -->
+  <section id="arcade" class="view arcade" hidden>
+    <div class="arcade-top">
+      <div class="arcade-title"><span>R4</span> LAN ARCADE <small>NATIVE PLAY // STREAM FALLBACK</small></div>
+      <div class="arcade-top-right">
+        <span id="arcadeHost" class="pill">HOST --</span>
+        <span id="arcadeViewers" class="pill">0 WATCHING</span>
+        <a id="arcadePlayTop" class="btn primary small" href="/play">PLAY IN BROWSER</a>
+        <button id="btnFullscreenTop" class="btn ghost small">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          FULLSCREEN
+        </button>
+      </div>
+    </div>
+
+    <div class="arcade-main">
+      <div class="stage-col">
+        <div class="cabinet">
+          <div class="cabinet-head">
+            <span class="cabinet-name">RIDGE RACER <b>TYPE 4</b></span>
+            <span class="cabinet-sub">LIVE CABINET // FALLBACK</span>
+          </div>
+          <div class="screen-shell">
+            <div id="screen" class="screen view-split">
+              <div id="screenIdle" class="screen-idle">CABINET BOOTING<span class="spinner"></span></div>
+              <div id="scanlines" class="scanlines"></div>
+              <div class="screen-hud">
+                <div class="hud-left">
+                  <span id="hudSeat" class="hud-seat">SPECTATOR</span>
+                  <span id="hudView" class="hud-view">FULL SPLIT</span>
+                </div>
+                <div class="hud-right"><span class="live"><i></i> LIVE</span></div>
+              </div>
+              <div id="countdown" class="countdown" hidden><span id="countdownNum">3</span><small>GET READY</small></div>
+              <div id="screenMsg" class="screen-msg" hidden></div>
+            </div>
+          </div>
+          <div class="cabinet-foot">
+            <div class="cabinet-lights"><i></i><i></i><i></i></div>
+            <div class="cabinet-controls">P1 <b>ARROWS + ZXAS</b> · P2 <b>IJKL + NMH,</b> · PAD <b>XBOX / PS</b></div>
+          </div>
+        </div>
+
+        <div class="stage-bar">
+          <div class="stage-view">
+            <span class="stage-kicker">VIEW</span>
+            <div class="view-switch" id="viewSwitch">
+              <button data-view="auto" class="active">MY VIEW</button>
+              <button data-view="split">FULL SPLIT</button>
+            </div>
+          </div>
+          <div class="stage-buttons">
+            <a id="arcadePlayStage" class="btn primary small" href="/play">PLAY IN BROWSER</a>
+            <button id="btnTouch" class="btn ghost small">TOUCH PAD</button>
+            <button id="btnController" class="btn ghost small">CONTROLLER</button>
+            <button id="btnFullscreen2" class="btn ghost small">FULLSCREEN</button>
+          </div>
+        </div>
+
+        <!-- Touch pad lives in the stage flow on phones, and overlays the
+             screen in fullscreen mode. -->
+        <div id="touchControls" class="touch-controls" hidden>
+          <div class="touch-dpad">
+            <button data-touch="up" class="t-up" aria-label="Up">▲</button>
+            <button data-touch="left" class="t-left" aria-label="Left">◀</button>
+            <button data-touch="right" class="t-right" aria-label="Right">▶</button>
+            <button data-touch="down" class="t-down" aria-label="Down">▼</button>
+          </div>
+          <div class="touch-mid">
+            <button data-touch="select" class="t-small">SELECT</button>
+            <button data-touch="start" class="t-small t-start">START</button>
+          </div>
+          <div class="touch-face">
+            <button data-touch="triangle" class="t-tri" aria-label="Triangle">△</button>
+            <button data-touch="circle" class="t-cir" aria-label="Circle">○</button>
+            <button data-touch="cross" class="t-cross" aria-label="Cross">✕</button>
+            <button data-touch="square" class="t-sq" aria-label="Square">□</button>
+          </div>
+          <div class="touch-shoulders">
+            <button data-touch="l2" class="t-shoulder">L2</button>
+            <button data-touch="l1" class="t-shoulder">L1</button>
+            <button data-touch="r1" class="t-shoulder">R1</button>
+            <button data-touch="r2" class="t-shoulder">R2</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side-col">
+        <div class="panel seats-panel">
+          <div class="panel-head"><span>DRIVER SEATS</span><span id="readyBadge" class="badge">LOBBY</span></div>
+          <div class="seat-subhead"><span>P1 / P2</span><span>SHARED CABINET</span></div>
+          <div id="seatCards" class="seat-cards"></div>
+          <div class="seat-actions">
+            <button id="btnReady" class="btn primary">READY</button>
+            <button id="btnStart" class="btn secondary">PRESS START</button>
+          </div>
+          <div class="seat-hint" id="seatHint">Take a seat to drive the live cabinet fallback. Or play natively in your browser from the top of the page.</div>
+          <div class="host-actions" id="hostActions" hidden>
+            <button id="btnRestart" class="btn danger small">RESTART CABINET</button>
+          </div>
+        </div>
+
+        <div class="panel chat-panel">
+          <div class="panel-head"><span>PADDOCK CHAT</span><span id="chatCount">0</span></div>
+          <div id="chatLog" class="chat-log" aria-live="polite"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" maxlength="220" placeholder="Say something…" autocomplete="off">
+            <button class="btn ghost small">SEND</button>
+          </form>
+        </div>
+
+        <div class="panel info-panel">
+          <div class="info-row"><span>CABINET</span><b id="infoCabinet">BOOTING</b></div>
+          <div class="info-row"><span>STREAM // FALLBACK</span><b id="infoStream">--</b></div>
+          <div class="info-row"><span>VIEWERS</span><b id="infoViewers">0</b></div>
+          <div class="info-row"><span>PING</span><b id="infoPing">--</b></div>
+          <div class="info-row"><span>INPUT</span><b id="infoInput">--</b></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<!-- ================= HELP MODAL ================= -->
+<div id="modalHelp" class="modal" hidden>
+  <div class="modal-card">
+    <button class="modal-close" data-close="modalHelp" aria-label="Close">✕</button>
+    <div class="modal-kicker">CABINET MANUAL</div>
+    <h2>HOW TO RACE</h2>
+    <div class="help-native">
+      <div>
+        <b>NATIVE / IN-BROWSER</b>
+        <p>The fastest path: the game runs locally in this tab through EmulatorJS. No host instance or video stream required.</p>
+      </div>
+      <a class="btn primary small" href="/play">PLAY IN BROWSER</a>
+    </div>
+    <div class="help-grid">
+      <div>
+        <h3>1. TAKE A SEAT (STREAM FALLBACK)</h3>
+        <p>Click <b>TAKE P1</b> or <b>TAKE P2</b> to drive the live LAN cabinet. Both seats are needed for a versus race; one seat works for solo/time attack.</p>
+        <h3>2. PRESS START</h3>
+        <p>Use <b>PRESS START</b> to wake the cabinet, then navigate the game's menus with your D-pad or left stick. Cross/A confirms, Circle/B backs out.</p>
+        <h3>3. RACE</h3>
+        <p>Choose <b>VS BATTLE</b> for 2-player split-screen. The host cabinet runs the game; your inputs travel over the LAN. For a host-free race, use <b>PLAY IN BROWSER</b>.</p>
+      </div>
+      <div>
+        <h3>KEYBOARD</h3>
+        <table class="keytable">
+          <tr><th></th><th>P1</th><th>P2</th></tr>
+          <tr><td>D-Pad</td><td>Arrows</td><td>I J K L</td></tr>
+          <tr><td>Cross / Circle</td><td>X / S</td><td>N / M</td></tr>
+          <tr><td>Square / Triangle</td><td>Z / A</td><td>, / H</td></tr>
+          <tr><td>L1 / R1</td><td>Q / W</td><td>U / O</td></tr>
+          <tr><td>L2 / R2</td><td>E / R</td><td>P / ;</td></tr>
+          <tr><td>Start / Select</td><td>Enter / R-Shift</td><td>Backspace / Tab</td></tr>
+        </table>
+        <h3>GAMEPAD</h3>
+        <p>Xbox and PlayStation controllers work through the browser Gamepad API. Left stick or D-pad steers; A/Cross confirms; Start pauses. Open <b>CONTROLLER</b> to test rumble.</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" data-close="modalHelp">GOT IT</button>
+      <button id="btnHelpFs" class="btn ghost">FULLSCREEN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CONTROLLER MODAL ================= -->
+<div id="modalController" class="modal" hidden>
+  <div class="modal-card controller-card">
+    <button class="modal-close" data-close="modalController" aria-label="Close">✕</button>
+    <div class="modal-kicker">INPUT BAY</div>
+    <h2>CONTROLLER</h2>
+    <div class="pad-status">
+      <div id="padStatusIcon" class="pad-icon">🎮</div>
+      <div class="pad-status-copy">
+        <div id="padStatusName" class="pad-name">No controller detected</div>
+        <div id="padStatusDetail" class="pad-detail">Connect an Xbox or PlayStation pad and press any button.</div>
+      </div>
+      <span id="padStatusBadge" class="badge">OFFLINE</span>
+    </div>
+
+    <div class="pad-diagram">
+      <div class="pad-diagram-head">
+        <span>STANDARD GAMEPAD MAP</span>
+        <span>XBOX / PLAYSTATION</span>
+      </div>
+      <div class="pad-triggers"><span>L2</span><span>L1</span><span>R1</span><span>R2</span></div>
+      <div class="pad-body">
+        <div class="pad-side">
+          <div class="pad-dpad" aria-hidden="true"><i>▲</i><i>◀</i><i>▶</i><i>▼</i></div>
+          <span class="pad-side-label">D-PAD</span>
+        </div>
+        <div class="pad-sticks">
+          <span class="stick">LS</span>
+          <span class="stick">RS</span>
+          <span class="pad-side-label">STICKS</span>
+        </div>
+        <div class="pad-side">
+          <div class="pad-face" id="padFace">
+            <span data-face="triangle">Y</span>
+            <span data-face="circle">B</span>
+            <span data-face="cross">A</span>
+            <span data-face="square">X</span>
+          </div>
+          <span class="pad-side-label">FACE BUTTONS</span>
+        </div>
+      </div>
+      <div class="pad-center"><span>SELECT</span><span>START</span></div>
+      <div class="pad-legend">
+        <div class="pad-legend-col">
+          <b>XBOX</b>
+          <div class="pad-legend-row"><span class="chip chip-y">Y</span><span class="chip chip-b">B</span><span class="chip chip-a">A</span><span class="chip chip-x">X</span></div>
+          <span class="pad-legend-note">Y / B / A / X</span>
+        </div>
+        <div class="pad-legend-col">
+          <b>PLAYSTATION</b>
+          <div class="pad-legend-row"><span class="chip chip-tri">△</span><span class="chip chip-cir">○</span><span class="chip chip-cross">✕</span><span class="chip chip-sq">□</span></div>
+          <span class="pad-legend-note">Triangle / Circle / Cross / Square</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pad-options">
+      <label>KEYBOARD LAYOUT
+        <select id="keyboardLayout">
+          <option value="auto">Auto (seat)</option>
+          <option value="p1">P1 layout</option>
+          <option value="p2">P2 layout</option>
+        </select>
+        <span class="opt-hint">Auto follows the seat you take.</span>
+      </label>
+      <label>CONTROLLER SLOT
+        <select id="padSlot"><option value="0">First connected</option><option value="1">Second connected</option></select>
+        <span class="opt-hint">Use the second pad on a shared PC.</span>
+      </label>
+      <label>SPLIT VIEW
+        <select id="splitOrientation">
+          <option value="auto">Auto (cabinet)</option>
+          <option value="vertical">Vertical (left / right)</option>
+          <option value="horizontal">Horizontal (top / bottom)</option>
+        </select>
+        <span class="opt-hint">Match the cabinet's split layout.</span>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button id="btnRumble" class="btn secondary">TEST RUMBLE</button>
+      <button class="btn primary" data-close="modalController">DONE</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<button id="btnExitFs" class="btn danger small exit-fs" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>
+  EXIT FULLSCREEN
+  <kbd>ESC</kbd>
+</button>
+
+<script src="/js/jsmpeg.min.js"></script>
+<script src="/js/controls.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "name": "ridge-racer-type-4-lan",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ridge Racer Type 4 LAN arcade: native cabinet streamed to browsers with 2-player pad relay.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "start:test": "node src/server.js",
+    "cert": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/make-cert.ps1",
+    "edge:smoke": "node scripts/https-smoke.mjs",
+    "music:manifest": "node scripts/build-music-manifest.mjs",
+    "audio:list": "py -3 src/audio.py --list",
+    "mp:lobby": "node test-mp-lobby-ui.mjs",
+    "mp:ws": "node mp-ws-probe.mjs",
+    "mp:macro": "node mp-macro-test.mjs",
+    "mp:e2e": "node test-mp-race-e2e.mjs",
+    "mp:verify": "node verify-mp.mjs",
+    "mp:verify:full": "node verify-mp.mjs --full",
+    "shell:fs": "node test-shell-fs.mjs",
+    "mp:heartbeat": "node mp-heartbeat-probe.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "compression": "^1.8.2",
+    "express": "^5.3.0",
+    "koffi": "^3.3.6",
+    "qrcode": "^1.5.4",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.16.0"
+  }
+}

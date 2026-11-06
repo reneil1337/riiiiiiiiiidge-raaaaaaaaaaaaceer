@@ -1,0 +1,132 @@
+---
+title: Ridge Racer Type 4
+description: Namco's 1998/1999 PlayStation racer — the 2P headline title of this cabinet.
+---
+
+<dl className="rr-spec">
+  <div><dt>Release</dt><dd>1998 (JP) · 1999 (US/EU)</dd></div>
+  <div><dt>Developer</dt><dd>Namco</dd></div>
+  <div><dt>Platform</dt><dd>PlayStation</dd></div>
+  <div><dt>USA serial</dt><dd>SLUS-00797</dd></div>
+  <div><dt>Players</dt><dd>1–2, split-screen</dd></div>
+  <div><dt>Disc here</dt><dd>CHD 341 MB</dd></div>
+  <div><dt>Game key</dt><dd><code>r4</code> · EJS id 4</dd></div>
+  <div><dt>Status</dt><dd><span className="rr-pill rr-pill--red">2P LAN</span></dd></div>
+</dl>
+
+## The game
+
+*Ridge Racer Type 4* is the fourth and final PlayStation 1 Ridge Racer. It wraps
+the arcade drift model in a team-management
+story: you join one of four racing teams, pick a car class, and race the **Real
+Racing Roots '99** championship across a set of point-to-point and circuit
+courses.
+
+What makes it different from the earlier games:
+
+- **A garage with a story.** Four teams (Racing Team Solvalou, Pac Racing Club,
+  Micro Mouse Mappy, Dig Racing Team) each have their own car development path,
+  liveries and rival driver.
+- **A proper drift model.** The handling is more forgiving than *Rage Racer* but
+  rewards clean entries and a committed line. The "drift-to-boost" feel that
+  later Ridge Racer games lean on starts here.
+- **The soundtrack.** The acid-jazz / drum-and-bass score is one of the reasons
+  people still boot the disc.
+- **Two-player split-screen.** This is the mode the LAN cabinet uses: both
+  drivers are in the same race, each with their own view. It is a real 2P race,
+  not a relayed single-player screen.
+
+## How it runs in this project
+
+| Path | What happens |
+| --- | --- |
+| `/multiplayer` | 2P LOUNGE with a **DISC** selector; pick Ridge Racer Type 4 for the real **VS BATTLE** — room code, teams, both READY, server-rolled course/cars, handoff to `/play-net` |
+| `/play?game=r4` | PCSX-Rearmed in the browser, `disc/r4.chd`, OpenBIOS or HLE |
+| `/play-net?game=r4` | Same emulator on EmulatorJS 4.3.0-pre; host streams over WebRTC, guest input is Player 2 |
+| `/lobby` | Native recomp, 2P split-screen, captured and relayed with jsmpeg (host-stream fallback) |
+| Native | `Ridge_Racer_4_Recompiled.exe` with the user's CUE/BIN and OpenBIOS |
+
+The browser and netplay paths share the same game key (`r4`) and `EJS_gameID = 4`.
+Room discovery requires both machines to use the same numeric ID; the same LAN
+origin is simplest but not enforced by the relay.
+
+`/multiplayer` now carries a **DISC** selector with all three discs (Ridge Racer
+Type 4, Rage Racer, Ridge Racer 1994). R4 is the **VS Battle disc**: it is the
+only one of the three with a genuine two-car race mode, so it is the only one that
+gets split screen, a preset car per driver and the automatic host menu macro. The
+other two discs run the lounge as a [shared car](/multiplayer/shared-car).
+
+## Start a race
+
+### Browser, solo
+
+```text
+http://<host-lan-ip>:8080/play?game=r4
+```
+
+Press **INSERT DISC & START**. The first load is the 341 MB CHD; the browser
+caches it for later visits.
+
+### Browser, 2P LAN
+
+Both machines open the shell at the **same origin**, press **ENTER**, then
+**2P** in the top bar:
+
+```text
+http://<host-lan-ip>:8080/
+```
+
+One player creates a four-character room, the other joins, both press **READY**.
+The server rolls one of the eight VS Battle courses and a preset car per driver,
+then both tabs hand off to `/play-net` with the same plan. The host macro opens
+R4's 2P VS Battle mode and starts the race; keep the host tab in the foreground
+because it runs the core and streams the race.
+
+Keep **Ridge Racer Type 4** selected in the lounge's **DISC** selector (the
+default, and the only disc with this handoff). Rage Racer and Ridge Racer 1994 in
+the same selector run as a [shared car](/multiplayer/shared-car) — one car, both
+pads, no split screen and no macro.
+
+The manual panel at `http://<host-lan-ip>:8080/play-net` still works, but there
+the host must pick **2-player race** in the game menu by hand. Full sequence and
+parameters: [2P lounge & race handoff](/multiplayer/lounge).
+
+### Native
+
+```powershell
+& "<repo>\Play Ridge Racer 4.bat"
+```
+
+## Controls
+
+| PlayStation | Xbox pad | Keyboard | In R4 |
+| --- | --- | --- | --- |
+| Cross | A | `X` | Accelerate |
+| Circle | B | `S` | Brake / reverse |
+| Square | X | `Z` | Brake (alternate) |
+| Triangle | Y | `A` | Change view |
+| Start | Menu | `Return` | Pause / confirm |
+| Select | View | `Right Shift` | Rear view / menu (unverified) |
+| D-pad / left stick | D-pad / left stick | Arrows | Steer |
+
+The native runtime is configured for **analog** mode, so the left stick steers
+and the D-pad still works. See [Controls](/reference/controls) for the full
+matrix and remapping files.
+
+:::note{title="Binding caveat"}
+The runtime log confirms the pad is opened, but the button-by-button mapping was
+not recorded. Treat the table above as configured intent rather than a verified
+per-button capture.
+:::
+
+## Notes and limits
+
+- The native release is **USA SLUS-00797** only in this workspace. Other regions
+  are not established as compatible with the pinned `game.toml`.
+- The built-in `recomp-net` netplay is compiled out of the release binary; the
+  LAN path therefore uses either EmulatorJS netplay (`/multiplayer` →
+  `/play-net`) or the native 2P split-screen relay (`/lobby`). See
+  [REA evidence](/engineering/rea).
+- Exclusive fullscreen (`fullscreen = 2`) switched the desktop to 1024×768 in
+  this workspace. The stable setting is `fullscreen = 0`; Borderless is still
+  being verified. See [Troubleshooting](/reference/troubleshooting).

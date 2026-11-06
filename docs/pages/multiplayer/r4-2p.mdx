@@ -1,0 +1,474 @@
+---
+title: R4 2P LAN netplay
+description: Host/guest flow, relay wiring, client configuration, limits and test evidence for Ridge Racer Type 4.
+---
+
+This is the canonical two-player path for **Ridge Racer Type 4**. It uses the
+pinned **EmulatorJS 4.3.0-pre** snapshot and a self-hosted relay on **TCP 3010**.
+The host runs the PSX core and streams the race over WebRTC; the guest sends
+input as Player 2.
+
+<div className="rr-route"><b>SHELL</b>  /  →  ENTER  →  /welcome  →  2P LOUNGE (/multiplayer)
+  │     └─ ws://host:8080/mp   room code, teams, both READY, race plan
+  │
+  └─ handoff  /play-net?embedded=1&threads=0&mpRole=…&mpRoom=…&mpRace=…
+        ┌─────────────── HOST browser ────────────────┐   ┌──── GUEST browser ────┐
+        │ EmulatorJS 4.3.0-pre                        │   │ EmulatorJS 4.3.0-pre  │
+        │   └─ PCSX-Rearmed (PSX core)                │   │   └─ receives WebRTC  │
+        │        └─ WebRTC ───────────────────────────┼──►│      video            │
+        │             ▲                               │   │   + sends P2 input    │
+        │             │ TCP 3010 relay (rooms/signal) │   │      after race-live  │
+        └─────────────┴───────────────────────────────┘   └───────────────────────┘
+                    both machines, same EJS_gameID = 4</div>
+
+<figure>
+  <img src="/docs/img/lan/lan-grid-locked.png" alt="GRID LOCKED overlay with the rolled course, both drivers' cars and GO before the handoff to /play-net" />
+  <figcaption>Both READY → GRID LOCKED: one course, one preset car per driver, then both tabs hand over.</figcaption>
+</figure>
+
+<figure>
+  <img src="/docs/img/lan/lan-guest-stream.jpg" alt="Guest race view: split-screen Ridge Racer Type 4 over WebRTC with the P2 LIVE chip" />
+  <figcaption>The guest's picture: the host's canvas over WebRTC, split-screen, P2 input sent back after <code>race-live</code>.</figcaption>
+</figure>
+
+## 2P Lounge (shell)
+
+The normal entry is **`/` → ENTER → WELCOME TO RIDGE CITY → 2P LOUNGE**.
+`/multiplayer` creates or joins a 4-character room, assigns the four teams, and
+gates the launch on **both players READY**. When both are ready the cabinet rolls
+a random R4 course and preset car assignments, then both browsers hand off to
+`/play-net?embedded=1&threads=0&mpRole=…&mpRoom=…&mpRace=…&mpTrackIndex=…&mpCarHost=…&mpCarGuest=…`.
+
+The host auto-creates the EmulatorJS room (`R4-<code>`, password `raceId`) and
+runs the VS Battle menu macro; the guest auto-joins and supplies Player 2 input
+only after the host signals `race-live`.
+
+After a race, the **REMATCH** chip on the game page (next to the netplay status
+chip) takes both seats back to the same lounge room in one click: the host
+recreates the same code, the guest retries until it exists, and both just press
+READY again for a fresh plan. The manual `/play-net` panel below remains the
+fallback and the debugging path — there the host still opens R4's 2P mode by hand.
+
+Full details, including the race-plan order, the macro sequence and the guest
+gate: [2P lounge & race handoff](/multiplayer/lounge).
+
+## Other discs
+
+The same lounge also runs **Rage Racer** and **Ridge Racer 1994**, but not as a
+VS Battle. Both discs are single-player on disc, so the lounge uses a **shared
+car**: the **host** starts a normal single-player race by hand, and the guest pad
+is folded onto the host's car (`player 1 → player 0`) so both people drive the one
+car. No split screen, no second car, no automatic macro.
+
+Pick the disc on the lounge's **DISC** selector (or `?game=rage` / `?game=ridge`).
+The handoff URL carries `&game=<key>` and the relay room prefix becomes
+`RAGE-<code>` / `RIDGE-<code>`; on those discs the host does **not** run the macro
+below. See [Shared car](/multiplayer/shared-car).
+
+### Rage/Ridge ghosts (optional mode)
+
+The same rooms can run **DRIVE GHOST** instead of the live shared car: turn-based
+Time Trial, one driver per run, and the disc's own replay plays the other seat's
+tape afterwards. The handoff then carries `&mpGhost=ghost&mpTurn=host|guest`, and
+a rematch flips the turn. R4 is unchanged — it is always `drive: live`, the drive
+control is disabled, and its handoff carries no `mpGhost`/`mpTurn`.
+
+Route A is a **post-race replay of the other seat's tape** (`ghost replay
+(sequential)`); Route B also **draws** that tape on track while you race (Ridge's
+race screen and Rage Grand Prix only — drawn, not simulated; Rage Time Attack is
+replay-only). Evidence: 40/40 replay engine, 36/36 live ghost, 36/36 lounge, with
+synthetic tapes. Full contract, addresses and limits:
+[Ghost replay (Rage Racer & Ridge Racer 1994)](/multiplayer/ghost-run).
+
+## URLs
+
+Use the **same LAN URL** on both machines — simplest, though not enforced by the
+relay:
+
+```text
+http://<host-lan-ip>:8080/
+```
+
+The shell, the lounge and the handoff all live on that origin. The raw netplay
+page is:
+
+```text
+http://<host-lan-ip>:8080/play-net
+```
+
+`/list` filters only by `game_id` and open capacity, and `join-room` does not
+check the domain, so a `localhost` host and a LAN-IP guest can still meet on the
+same `:3010`. The match that **is** enforced is the numeric `EJS_gameID`.
+
+Equivalent aliases:
+
+| URL | What it serves |
+| --- | --- |
+| `/play-net` | canonical netplay page, 4.3.0-pre from `/emulator43/data/` |
+| `/play?netplay=1` | same document |
+| `/play-net.html` | static alias (works before a server restart) |
+| `/play` | stable single-player, 4.2.3 from `/emulator/data/` |
+| `/multiplayer` | 2P lounge that hands both tabs to `/play-net` |
+| `/lobby` | old lobby + native host-stream fallback |
+
+Optional parameters: `?game=r4`, `?bios=hle`, `?netserver=http://host:3010`,
+`?threads=1|0`, plus the lounge handoff parameters `mpRole`, `mpRoom`, `mpRace`,
+`mpTrackIndex`, `mpCarHost`, `mpCarGuest` (see
+[the parameter table](/multiplayer/lounge#the-handoff-url)). Ghost rooms on
+Rage/Ridge add `mpGhost=ghost&mpTurn=host|guest`; R4 never carries them.
+
+## Start and stop
+
+First run in `_server`:
+
+- `npm install` once if `node_modules` is missing.
+- The host needs the R4 disc image (**CHD**, or BIN + CUE) and a PSX **BIOS**.
+- The `/lobby` native fallback additionally needs the native game, **ffmpeg**,
+  and optionally Python for audio.
+
+```powershell
+cd _server
+start-test.bat          # web app + relay, no native cabinet
+# or
+start.bat               # web app + native cabinet + relay
+```
+
+The launchers start the relay on 3010 unless `RR4_NO_NETPLAY=1`. To run the relay
+alone:
+
+```powershell
+cd _server
+start-netplay.bat
+```
+
+Stop everything:
+
+```powershell
+stop.bat
+```
+
+Stop only the relay:
+
+```powershell
+stop-netplay.bat
+```
+
+## Host / guest flow
+
+### Normal path: 2P lounge
+
+1. Both machines open `http://<host-lan-ip>:8080/`, press **ENTER**, then **2P**
+   in the shell top bar.
+2. **Host** types a name and presses **CREATE ROOM** (a four-character code is
+   generated when the field is empty). **Guest** joins with the code, the room
+   row, or the invite link `/multiplayer?room=CODE`.
+3. Both pick a team and press **READY**. The server rolls the course and preset
+   cars once, both tabs show the same 3-2-1-GO overlay, and the shell loads
+   `/play-net` with the plan.
+4. The host auto-hosts the relay room `R4-<code>` with password `raceId` and
+   retries; the guest retries the relay `/list` until it sees that exact room
+   name and joins with the same password.
+5. Once the host sees 2 players and an open data channel, the macro drives R4's
+   VS Battle menus: RAM-probe the main menu, car P1, car P2 (player index `1`),
+   course, Start.
+6. The guest core stays frozen and its input is dropped until the host signals
+   `race-live` on the data channel.
+7. Keep the host tab in the **foreground**; it runs the core and the macro.
+
+### Manual path: raw `/play-net` panel
+
+1. **Host** opens the LAN URL, waits for the emulator and the `RELAY OK :3010`
+   pill, enters a player name and room name, clicks **CREATE ROOM**.
+   - The host machine runs the PSX core.
+   - The host streams canvas video to the guest over WebRTC; the stream carries
+     **no audio track** (see [Limitations](#limitations)).
+   - The host is authoritative; keep the host tab in the foreground.
+2. **Guest** opens the host's LAN URL (any URL that reaches the same `:3010`
+   works), enters a name, waits for the room under **JOIN A ROOM**, clicks
+   **JOIN**.
+   - The guest receives the streamed R4 picture.
+   - The guest's pad/keyboard input is sent to the host as Player 2.
+   - The **DLSS 5** grade is applied to the received 2D canvas on the guest;
+     the host canvas stays raw (filtering the 4.3 WebGL canvas can composite
+     black).
+3. **Host** chooses R4's **2-player race** mode in the game menu and starts the
+   race. The panel does not run the lounge macro, so netplay only supplies guest
+   input as Player 2; it does not select 2P mode automatically.
+4. The panel collapses after joining; the chip shows the seat, the room and the
+   P2 lock state, e.g. `HOST P1 - R4-<code>` or
+   `GUEST P2 LOCKED - R4-<code> - CAR P2`, flipping to `GUEST P2 LIVE` once the
+   host's grid is live. The lounge macro also mirrors the host's menu stage into
+   it; the manual panel just shows the lock state.
+5. Click the chip to reopen, then **LEAVE ROOM** to disconnect.
+6. **EJS NETPLAY MENU** opens EmulatorJS's built-in netplay UI as a fallback.
+
+Room discovery rules:
+
+- Same numeric `EJS_gameID` (4 for R4, 5 for Rage Racer, 6 for Ridge 1994). This
+  is the rule the relay enforces.
+- Same LAN origin is simplest, but not required: `/list` filters only by
+  `game_id` and capacity, and `join-room` does not check the domain.
+- The manual panel's **CREATE ROOM** sets no password; the lounge sets
+  `raceId` as the room password. The built-in EJS menu can set one too.
+- A full room (`current === max`) disappears from `/list`; that is upstream
+  behavior.
+
+## Race handoff parameters
+
+The lounge hands both browsers to `/play-net` with the same plan. Parameter
+names are parsed by `public/js/play-net.js`; keep them stable.
+
+```text
+/play-net?embedded=1&threads=0&mpRole=host&mpRoom=SJKE
+          &mpRace=SJKE-mw43adyz-qyde&mpTrackIndex=6&mpCarHost=5&mpCarGuest=0
+```
+
+| Parameter | Values | Effect |
+| --- | --- | --- |
+| `mpRole` | `host` / `guest` | host runs the macro and hosts `R4-<code>`; guest joins and gates input |
+| `mpRoom` | 4 characters, `A–Z0–9` | room code; the relay room name is `R4-<code>` |
+| `mpRace` | up to 48 `A–Z0–9-` | relay room password (the `raceId`) |
+| `mpTrackIndex` | `0–7` | course position in in-game menu order |
+| `mpCarHost` | `0–7` | P1 preset car position |
+| `mpCarGuest` | `0–7` | P2 preset car position |
+| `embedded` | `1` | page runs inside the shell frame |
+| `threads` | `0` | force the non-threaded core |
+| `game` | `r4` | disc key; `r4` for this page, `rage`/`ridge` select the shared-car discs |
+| `mpGhost` | `ghost` / `live` / absent | Rage/Ridge ghost rooms only; R4 ignores it |
+| `mpTurn` | `host` / `guest` | Rage/Ridge ghost rooms only: this run's driver; R4 never carries it |
+
+Without `mpTrackIndex`/`mpCar*`, `play-net.js` rolls a fresh random plan for that
+tab. Both handoffs carry the full plan: the shell builds it from the lounge's
+`rr4-race` message, and the standalone `/multiplayer` tab builds it from the
+`race` message before navigating. Keep those parameters in both places so
+`/play-net` never rerolls a plan the lounge announced. Course/car order and the
+macro sequence are in [2P lounge & race handoff](/multiplayer/lounge).
+
+## Client configuration
+
+`public/js/play-net.js` assigns these at boot. Abridged and illustrative, with R4
+values (`game` is the selected title from `GAMES`):
+
+```js
+const game = GAMES[(qs.get('game') || 'r4').toLowerCase()] || GAMES.r4;
+
+window.EJS_pathtodata = '/emulator43/data/';
+window.EJS_gameName = game.name;             // 'Ridge Racer Type 4'
+window.EJS_gameID = game.id;                 // 4 = r4, 5 = rage, 6 = ridge
+window.EJS_gameUrl = cueMode === 'file' && /\.bin$/i.test(game.rom)
+  ? game.cue                                 // '/rom/R4 - ... (USA).cue'
+  : game.rom;                                // '/rom/r4.chd'
+
+// ?netserver=http://host:3010 overrides this
+window.EJS_netplayServer = (qs.get('netserver') ||
+  `http://${location.hostname}:3010`).replace(/\/+$/, '');
+window.EJS_netplayICEServers = [];            // LAN host candidates only
+window.EJS_Buttons = { netplay: true };
+```
+
+It also reuses the single-player disc/BIOS/filter/fullscreen/gamepad behavior:
+`EJS_core = 'psx'`, `EJS_biosUrl = '/bios/openbios.bin'` (or empty for HLE),
+non-threaded core by default, filters, click-to-race audio, fullscreen, and
+gamepad auto-assign. `EJS_gameUrl` falls back to the BIN + external CUE when
+`?cue=file` is used on a disc image that needs it.
+
+`GET /api/netplay-config` already returns the same relay URL, port, protocol and
+`gameIds` derived from the request origin, but the page still hardcodes
+`http://<hostname>:3010`. An `https:` page therefore needs the relay on `:3010`
+(or the same TLS origin) until the page switches to that endpoint.
+
+## Firewall and network
+
+```powershell
+cd _server
+.\firewall.bat           # inbound TCP 8080 (the page itself)
+.\firewall-netplay.bat   # inbound TCP 3010, all profiles
+```
+
+Run **both**. The netplay page is served over 8080; 3010 alone only opens the
+relay. `firewall-netplay.bat` covers Domain, Private and Public — the WLAN
+adapter is often classified Public, and a Private-only rule silently blocks
+guests. When Windows prompts on first launch, allow **Brave** (or Chrome) on
+**Private** and **Public**.
+
+- TCP 3010 is rooms and signaling only; WebRTC media uses ephemeral UDP between
+  the browsers.
+- Find the host LAN IP with `ipconfig`, or read `cabinet.urls` from
+  `http://127.0.0.1:8080/api/status`.
+- Same subnet: no port-forward needed.
+- Across NAT/internet: forward TCP 3010 **and** add STUN/TURN.
+- `EJS_netplayICEServers = []` is intentional for one-subnet play. The browser
+  console prints:
+  `[NETPLAY] No ICE servers configured. Connections will only work on LAN.`
+- Disable Wi-Fi AP/client isolation; avoid VPN adapters and multiple subnets.
+- Plan for roughly **0.9–2.5 Mbps upstream per guest** at the MED/60 default
+  (LOW = 1.5 Mbps/30, HIGH = 8 Mbps/60) and **30–80 ms** encode/decode plus
+  network latency. A weak host CPU or 2.4 GHz Wi-Fi shows as guest stutter, not
+  host input lag.
+
+## Stream tuning
+
+`play-net.js` wraps the pinned 4.3 bundle (which is untouched) and exposes both
+the tuning and an escape hatch for every part of it:
+
+| Knob | Default | Escape hatch |
+| --- | --- | --- |
+| Capture | `captureStream(0)` + `requestFrame()` per core frame, ~59 fps encoded | `?capture=30` (bundle track), `?pin=1` (offscreen 960×720 pin) |
+| Bitrate / fps ceiling | 8 Mbps / 60 fps re-applied to every sender | panel **QUALITY** or `?quality=low\|med\|high\|auto` |
+| Keyframe | forced on `race-live`, join, a >500 ms stall and a guest request | `?keyframe=0` |
+| Guest input | one send: data channel while open, relay as fallback | `?dedup=0` (old double send) |
+| Stats | 2 s `getStats()` line in the stage log + `window.__R4NET.stats` | `?stats=0` |
+| Guest blit | bundle 140 Hz rAF copy | `?draw=bundle\|gated\|qpf\|rvfc`, `?desync=1`, `?video=attached` |
+
+The panel's **QUALITY** selector is AUTO / LOW / MED / HIGH. AUTO starts on MED
+and drops to LOW after two bad 2 s windows (`bandwidth` or rising loss) and never
+climbs back. The value is sent to the host as `{type:'rr4-quality'}` over the same
+data channel; the host applies it with `setParameters`. `image-rendering` follows
+the real upscale factor, so `pixelated` appears only for an exact integer scale.
+
+Measured on two contexts on one host: host encode **29.29 → 59.08 fps**, guest
+decoded **29.29 → 57.44 fps**, guest *presented* **42–55 fps**, 0.92–2.50 Mbps,
+jitter 11.4 ms, loss 0 %, RTT 0–1 ms. Numbers and limits:
+[Performance and networking](/play/performance). Panel captures:
+`_runtime/netplay-panel-desktop-1440x900.png`,
+`_runtime/netplay-panel-mobile-390x844.png`.
+
+## Test evidence
+
+The checked-in `test-play-net.mjs` contains **21 checks** and was run twice
+end-to-end; `_runtime/netplay-integration-results.json` records those 21 core
+checks as passing. A separate, expanded **doc-only** run reported **33/33**, but
+its harness and result file are not checked in. That older 33/33 is about the
+netplay page; the lounge's 33/33 below is a different harness.
+
+| Run | Origin | Netplay path | Result |
+| --- | --- | --- | --- |
+| New server code | `http://<host-lan-ip>:8090` | `/play?netplay=1&cache=0` | **21/21** |
+| Live server on `:8080` | `http://<host-lan-ip>:8080` | `/play-net.html?cache=0` | **21/21** |
+
+Key checks:
+
+| Check | Evidence |
+| --- | --- |
+| Netplay document served | `play-net.js` + `netplayPanel` present |
+| `/play` still 4.2.3 | `/js/play.js`, no netplay panel |
+| Both data folders coexist | 4.3.0-pre on `/emulator43/data`, 4.2.3 on `/emulator/data` |
+| Host boot | 3–4 s single-page (5.4–6.2 s cold in the two-tab lounge run), `4.3.0-pre`, canvas 876×657 |
+| Host creates room | relay `/list` advertises the room for gameID 4 |
+| Guest sees room | relay row + JOIN button |
+| Both see 2 players | `["PLAYER A","PLAYER B"]` |
+| Roles | host `owner=true`; guest `owner=false` |
+| WebRTC | `connected` on both; data channel `open` |
+| Guest video | `readyState 4`, `currentTime` advances |
+| Guest input | host PSX `simulateInput` received `[1,0,1]` (player 2) |
+| Regressions | 4.2.3 single-player still boots; 0 page errors |
+
+Machine-readable summary: `_runtime/netplay-integration-results.json` (the 21
+core checks; the 33/33 expanded run is separate).
+Logs: `_runtime/netplay-integration.log`,
+`_runtime/netplay-integration-live8080-console.txt`.
+
+### 2P lounge and handoff evidence
+
+Scoped labels for the newer lounge path:
+
+| Area | Harness | Result | Scope |
+| --- | --- | --- | --- |
+| Lounge UI + handoff | `_server/test-mp-lobby-ui.mjs` → `_runtime/mp-lobby-ui.json` | **33/33** | two browser contexts; identical plan and identical `/play-net` `mp*` URL; `/play-net` document held by request interception |
+| Raw `/mp` transport | `_server/mp-ws-probe.mjs` → `_runtime/mp-lobby-ws.json` | **22/22** | `ws://127.0.0.1:8080/mp` on the restarted server; includes app-level `pong` and a server heartbeat ping |
+| Host macro | `_server/mp-macro-test.mjs` → `_runtime/mp-macro-evidence.json` | **6/6** | `harness-verified host-only`, real split-screen race, reaches `race:live`, final-frame race check (`yellowFrac` 0) |
+| Two-browser guest P2 | `_server/test-mp-race-e2e.mjs` → `_runtime/mp-race-e2e.json` | **40/40** | `harness-verified two-browser` (two contexts on one host): live `/play-net` in both tabs, plan matches the lounge roll, `frames.race.raceLike === true`, guest video advances, guest pad reaches the host as `player 1, index 0, value 1` with zero player-0 records, and the guest chip reads `GUEST P2 LIVE` |
+| `/mp` heartbeat + promotion | `_server/mp-heartbeat-probe.mjs` | 10/10, console only | throwaway `:8095`; `:8080` restarted 2026-11-06 and serves the same build |
+
+**Race-frame and screenshot proof.** The 40/40 run asserts
+`frames.race.raceLike === true` (`yellowPct` 0.1, `nonBlackPct` 64.6,
+`meanLum` 78.3 on the current artifact) and writes
+`_runtime/mp-race-e2e-host-race.png` / `-guest-race.png` at `race:live + 18 s`
+(host canvas + guest host-stream, both measured), plus the final
+`-host`/`-guest` split-screen pair, `-host-go`/`-guest-go`,
+`-guest-car-p1`/`-guest-car-p2`, `-host-course`, `-host-loading`,
+`-host-live6s`/`-guest-live6s` and `-guest-before`/`-guest-after`. The host frame
+must be race-like, not a yellow menu. The macro's plan is proved by
+`_runtime/mp-macro-06-car-p1-data.png` (`PRESET G2` for `mpCarHost=5`),
+`_runtime/mp-macro-10-car-p2-data.png` (`PRESET D3` for `mpCarGuest=2`) and
+`_runtime/mp-macro-13-course-locked.png` (`Out of blue`).
+
+Pacing: car presses are paced against the pad-ack byte `0x800ABD9F` (retry
+`Right` until exactly `carIndex` steps land), while the course list does not
+update that byte, so course presses use exact fixed pacing. Stage records keep
+`presses`/`delta`, and `race-live` is sent 20 s after the course confirm.
+
+`0 page errors` in the 21-check table means no uncaught page errors. It is not a
+claim of zero console output: `/play-net` prints
+`[NETPLAY] No ICE servers configured. Connections will only work on LAN.`, and
+`/docs/introduction` logs React #418. A plain-HTTP LAN origin now logs **no**
+COOP warning — the server sends COOP/COEP on loopback/HTTPS only, and on a secure
+origin the shell and the embedded `/play` are both `crossOriginIsolated`.
+
+## Limitations
+
+1. **Host tab must stay foreground.** Background tabs throttle canvas capture;
+   the guest stream stutters or freezes.
+2. **Host-authoritative WebRTC.** Only the host runs the core. The guest cannot
+   run the race locally.
+3. **Host departure.** 4.3-pre does not promote the guest in the client. The
+   relay transfers ownership server-side, but the guest keeps waiting for the old
+   host's stream. Leave/rejoin or restart the room.
+4. **Same gameID is the hard rule.** `EJS_gameID` must match. Same `host:port`
+   origin is simplest but not enforced by the relay (`/list` ignores `domain`,
+   `join-room` does not check it).
+5. **One subnet with empty ICE.** Add STUN **and** TURN for NAT/internet; STUN
+   alone is not enough.
+6. **R4 only for a two-car race.** Rage Racer and Ridge 1994 are single-player
+   discs. The lounge still runs them as a **shared car** (both pads drive the
+   host's one car, host starts a normal race by hand) or as a turn-based **ghost
+   replay** (one driver per run, the native replay plays the other seat's tape),
+   and the netplay page labels the live mode **2P SHARED** — not a second car. See
+   [Shared car](/multiplayer/shared-car) and [Ghost replay](/multiplayer/ghost-run).
+7. **Guest audio is absent, not unverified.** The 4.3 host captures from
+   `Module.AL.currentCtx`, which is `null` under RWebAudio, so the stream is
+   video-only: `[NETPLAY HOST] No audio tracks captured - guests will have no
+   audio`, host tracks `["video:live"]`, guest `remoteEls: 0`, no inbound audio
+   RTP. Clicking **CLICK TO RACE** does not fix it — there is no OpenAL context to
+   capture. A real fix needs an RWebAudio tap on the host.
+8. **Guest downloads the disc too.** The guest boots its own EmulatorJS instance
+   to get the netplay UI, so it downloads the 341 MB CHD before joining, then
+   freezes its local core.
+9. **Two physical machines: run by hand.** The harness used two Brave contexts on
+   one host through the real LAN IP; the operator has since played a 2P VS Battle
+   across two physical machines on the LAN and reports it works
+   (`manually verified two-machine`, 2026-11-06). The "direct host candidates"
+   finding is from the separate PSX report (`_server/NETPLAY-REPORT.md`), not the
+   21-check
+   results JSON; the same path should apply to a one-subnet LAN.10. **4.3.0-pre is pinned.** `_server/netplay/ejs-data-nightly/` is a snapshot,
+    not the live CDN. Do not switch the page to the CDN at runtime.
+11. **HTTPS / mixed content.** If `/play` is served over HTTPS, the relay must be
+    HTTPS/WSS or proxied through the main server.
+12. **4.2.3 netplay is not usable.** Its handshake works but host input frames
+    stay at `currentFrame = 0`; keep it single-player.
+13. **WebRTC setup is retryable.** A timed-out peer connection usually connects on
+    an immediate rejoin/restart.
+14. **Standalone lounge has no shell chrome.** `/multiplayer` in its own tab still
+    carries the full plan (`mpTrackIndex`/`mpCar*`) since 2026-11-05, but the
+    page navigates away from the hub, the parent audio element stops, and
+    `/play-net` shows its own **CLICK TO RACE** gate. Use the shell for a real
+    race, the direct tab for a quick local one.
+15. **Guest input is gated by design in the lounge handoff.** Until the host sends
+    `race-live`, the guest's `simulateInput` is dropped so it cannot move the
+    host's car-select cursor. Count blocked events with
+    `window.__R4MP.blockedGuestInputs`. A **manual** `/play-net` join (no
+    `mpRole`/`mpRoom` params) is not gated: the host runs no macro, so the guest
+    drives immediately. Once live, each event is sent **once** (the Socket.IO
+    `sync-control` copy is suppressed while the data channel is open), so one
+    press + release records two host records.
+
+## Related
+
+- [2P lounge & race handoff](/multiplayer/lounge)
+- [Shared car (Rage Racer & Ridge Racer 1994)](/multiplayer/shared-car)
+- [Ghost replay (Rage Racer & Ridge Racer 1994)](/multiplayer/ghost-run)
+- [LAN overview](/multiplayer/lan)
+- [Performance and networking](/play/performance)
+- [Browser arcade](/play/browser)
+- [Host-stream cabinet](/play/host-stream)
+- [Troubleshooting](/reference/troubleshooting)

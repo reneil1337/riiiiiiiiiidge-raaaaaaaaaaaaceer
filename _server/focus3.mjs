@@ -1,0 +1,43 @@
+import koffi from 'koffi';
+const u = koffi.load('user32.dll');
+const k = koffi.load('kernel32.dll');
+const FindWindowW = u.func('void* FindWindowW(str16 cls, str16 title)');
+const GetForegroundWindow = u.func('void* GetForegroundWindow()');
+const GetWindowThreadProcessId = u.func('uint32 GetWindowThreadProcessId(void* h, _Out_ uint32* pid)');
+const AttachThreadInput = u.func('bool AttachThreadInput(uint32 a, uint32 b, bool attach)');
+const SetForegroundWindow = u.func('bool SetForegroundWindow(void* h)');
+const BringWindowToTop = u.func('bool BringWindowToTop(void* h)');
+const SetActiveWindow = u.func('void* SetActiveWindow(void* h)');
+const SetFocus = u.func('void* SetFocus(void* h)');
+const SwitchToThisWindow = u.func('void SwitchToThisWindow(void* h, bool alt)');
+const SetWindowLongW = u.func('int SetWindowLongW(void* h, int i, int v)');
+const SetWindowPos = u.func('bool SetWindowPos(void* h, void* after, int x, int y, int cx, int cy, uint flags)');
+const ShowWindow = u.func('bool ShowWindow(void* h, int c)');
+const GetCurrentThreadId = k.func('uint32 GetCurrentThreadId()');
+
+const h = FindWindowW(null, 'RR4-LAN');
+console.log('hwnd', h);
+if (!h) process.exit(2);
+SetWindowLongW(h, -16, 0x90000000);
+SetWindowPos(h, -1, 0, 0, 1280, 960, 0x60);
+ShowWindow(h, 5);
+const fg = GetForegroundWindow();
+const fgThread = GetWindowThreadProcessId(fg, null);
+const targetThread = GetWindowThreadProcessId(h, null);
+const me = GetCurrentThreadId();
+console.log({ fg, fgThread, targetThread, me });
+AttachThreadInput(me, fgThread, true);
+const ok = SetForegroundWindow(h);
+BringWindowToTop(h);
+SetActiveWindow(h);
+SetFocus(h);
+AttachThreadInput(me, fgThread, false);
+await new Promise(r => setTimeout(r, 400));
+let now = GetForegroundWindow();
+console.log('after attach', ok, now, now === h);
+if (now !== h) {
+  SwitchToThisWindow(h, true);
+  await new Promise(r => setTimeout(r, 400));
+  now = GetForegroundWindow();
+  console.log('after switch', now, now === h);
+}

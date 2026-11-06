@@ -1,0 +1,7 @@
+[
+  { "log": "post-boot attract, no input" },
+  { "wait": 45000 },
+  { "tap": [0, 3, 200, 4000] },
+  { "log": "after first Start" },
+  { "wait": 12000 }
+]

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>RR4 Netplay Harness</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0d12; color: #e8eefc; font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 12px 16px; background: #121722; border-bottom: 1px solid #263044; display: flex; gap: 18px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 15px; letter-spacing: .12em; color: #ffd23f; }
+  header code { color: #8fd3ff; }
+  #status { padding: 8px 16px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #9fb0c9; border-bottom: 1px solid #1d2533; }
+  #status b { color: #e8eefc; font-weight: 600; }
+  #game { width: min(100vw, 960px); height: min(62vh, 600px); margin: 12px auto; background: #000; }
+  #log { margin: 0 16px 20px; padding: 10px 12px; background: #0f1420; border: 1px solid #1d2533; border-radius: 8px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; max-height: 26vh; overflow: auto; color: #b9c7dd; }
+</style>
+</head>
+<body>
+<header>
+  <h1>RR4 // NETPLAY HARNESS</h1>
+  <span>server <code id="srv"></code></span>
+  <span>gameID <code id="gid"></code></span>
+  <span>host <code id="host"></code></span>
+</header>
+<div id="status">
+  <span>boot <b id="stBoot">no</b></span>
+  <span>socket <b id="stSock">-</b></span>
+  <span>room <b id="stRoom">-</b></span>
+  <span>role <b id="stRole">-</b></span>
+  <span>players <b id="stPlayers">0</b></span>
+  <span>names <b id="stNames">-</b></span>
+</div>
+<div id="game"></div>
+<pre id="log"></pre>
+
+<script>
+  // ---------------------------------------------------------------- config
+  // EJS 4.2.3 hides netplay unless BOTH of these are true AND the button is
+  // explicitly enabled. See _server/NETPLAY-REPORT.md.
+  window.EJS_DEBUG_XX = true;
+  window.EJS_EXPERIMENTAL_NETPLAY = true;
+
+  window.EJS_language = 'en-US';
+  window.EJS_disableAutoLang = true;
+  window.EJS_player = '#game';
+  window.EJS_core = 'nes';
+  window.EJS_gameName = 'nestest';
+  window.EJS_gameUrl = 'test-assets/nestest.nes';
+  window.EJS_pathtodata = 'ejs-data/';
+  window.EJS_gameID = 4001;
+  window.EJS_volume = 0;
+  window.EJS_startOnLoaded = true;
+  window.EJS_Buttons = { netplay: true };
+  window.EJS_netplayServer = location.protocol + '//' + location.hostname + ':3010';
+  // LAN only: host candidates are enough. STUN is optional; TURN is only needed
+  // across NAT. EJS 4.2.3 does not read this yet, newer clients do.
+  window.EJS_netplayICEServers = [
+    { urls: 'stun:stun.l.google.com:19302' }
+  ];
+
+  window.__gameStarted = false;
+  window.EJS_onGameStart = function () {
+    window.__gameStarted = true;
+    log('EJS_onGameStart');
+  };
+  window.EJS_onExit = function () { log('EJS_onExit'); };
+
+  const lines = [];
+  function log(msg) {
+    const line = new Date().toISOString().slice(11, 23) + '  ' + msg;
+    lines.push(line);
+    if (lines.length > 120) lines.shift();
+    const el = document.getElementById('log');
+    if (el) el.textContent = lines.join('\n');
+    console.log('[harness]', msg);
+  }
+  window.__harnessLog = lines;
+
+  document.getElementById('srv').textContent = window.EJS_netplayServer;
+  document.getElementById('gid').textContent = String(window.EJS_gameID);
+  document.getElementById('host').textContent = location.host;
+
+  function refresh() {
+    const e = window.EJS_emulator;
+    const np = e && e.netplay;
+    const sock = np && np.socket;
+    const players = (np && np.players) || {};
+    const names = Object.values(players).map((p) => p.player_name).filter(Boolean);
+    document.getElementById('stBoot').textContent = window.__gameStarted ? 'yes' : (e ? 'loading' : 'no');
+    document.getElementById('stSock').textContent = sock ? (sock.connected ? 'connected' : 'disconnected') : '-';
+    document.getElementById('stRoom').textContent = (np && np.extra && np.extra.room_name) || (e && e.isNetplay ? 'joined' : '-');
+    document.getElementById('stRole').textContent = e && e.isNetplay ? (np.owner ? 'host' : 'client') : '-';
+    document.getElementById('stPlayers').textContent = String(Object.keys(players).length);
+    document.getElementById('stNames').textContent = names.length ? names.join(', ') : '-';
+  }
+  setInterval(refresh, 250);
+
+  // Test hooks used by test-netplay.mjs. These still go through EmulatorJS'
+  // own netplay code paths (same code the toolbar buttons call).
+  window.__np = {
+    ready() { return !!(window.EJS_emulator && window.EJS_emulator.netplay); },
+    setName(name) {
+      const e = window.EJS_emulator;
+      if (!e.netplay) e.openNetplayMenu();
+      e.netplay.name = name;
+      log('name=' + name);
+    },
+    openRoom(name, maxPlayers, password) {
+      window.EJS_emulator.netplay.openRoom(name, maxPlayers || 2, password || '');
+      log('openRoom ' + name);
+    },
+    joinRoom(sessionId, roomName) {
+      window.EJS_emulator.netplay.joinRoom(sessionId, roomName);
+      log('joinRoom ' + sessionId);
+    },
+    snapshot() {
+      const e = window.EJS_emulator;
+      const np = e && e.netplay;
+      return {
+        started: window.__gameStarted,
+        isNetplay: !!(e && e.isNetplay),
+        owner: !!(np && np.owner),
+        connected: !!(np && np.socket && np.socket.connected),
+        players: np ? Object.values(np.players || {}).map((p) => p.player_name) : [],
+        session: np && np.extra ? np.extra.sessionid : null,
+        room: np && np.extra ? np.extra.room_name : null,
+        url: np ? np.url : null,
+        netplayButtonVisible: !!(e && e.elements && e.elements.bottomBar.netplay && e.elements.bottomBar.netplay[0] &&
+          getComputedStyle(e.elements.bottomBar.netplay[0]).display !== 'none'),
+        paused: !!(e && e.paused),
+        coreFrame: (e && e.gameManager && e.gameManager.getFrameNum) ? e.gameManager.getFrameNum() : null,
+        frame: np ? np.currentFrame : null,
+        initFrame: np ? np.init_frame : null,
+        wait: np ? !!np.wait : null,
+        canvas: (() => { const c = document.querySelector('#game canvas'); return c ? { w: c.width, h: c.height } : null; })(),
+      };
+    },
+    inputTest(player, index, value) {
+      const e = window.EJS_emulator;
+      if (!e || !e.netplay || !e.netplay.simulateInput) return false;
+      e.netplay.simulateInput(player, index, value);
+      return true;
+    },
+  };
+
+  log('config server=' + window.EJS_netplayServer + ' gameID=' + window.EJS_gameID);
+</script>
+<script src="ejs-data/loader.js"></script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Ridge Racer // 2P LAN Netplay</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23e10600'/%3E%3Ctext x='16' y='24' font-family='Arial,sans-serif' font-size='22' font-weight='900' fill='%23fff' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/play.css">
+<link rel="stylesheet" href="/css/play-net.css">
+</head>
+<body class="netplay-page">
+<div id="play-shell">
+  <header id="play-bar">
+    <div class="brand"><span class="brand-mark">R</span> <span id="brandGame">RIDGE RACER <em>TYPE 4</em></span></div>
+    <label class="picker" for="gameSelect">
+      <span>GAME</span>
+      <select id="gameSelect" aria-label="Select game"></select>
+    </label>
+    <div id="bootStatus" class="status" data-state="loading">LOADING EMULATOR...</div>
+    <button id="npToggle" class="btn btn-netplay" type="button" aria-expanded="true" title="Show or hide the 2P LAN netplay panel">
+      <span class="btn-ico" aria-hidden="true">2P</span> MULTIPLAYER
+    </button>
+    <a class="btn btn-ghost" href="/play" title="Stable single-player page (EmulatorJS 4.2.3)">SINGLE PLAYER</a>
+    <button id="fsBtn" class="btn" type="button" title="Fullscreen (F)" aria-pressed="false">
+      <span class="btn-ico" aria-hidden="true">[ ]</span> FULLSCREEN
+    </button>
+  </header>
+
+  <main id="play-stage">
+    <div id="game" aria-label="PlayStation emulator screen"></div>
+
+    <div id="bootOverlay" class="overlay" aria-live="polite">
+      <div class="overlay-inner">
+        <div class="overlay-kicker" id="overlayKicker">NETPLAY 4.3-PRE - HOST STREAMS</div>
+        <h1 id="overlayTitle">RIDGE RACER TYPE 4</h1>
+        <p id="overlayText">Downloading disc image...</p>
+        <div class="bar"><i id="overlayBar"></i></div>
+        <p class="overlay-hint" id="overlayHint">341 MB - served from this machine</p>
+      </div>
+    </div>
+
+    <button id="soundGate" class="sound-gate" type="button" hidden>
+      <span class="sound-gate-main">CLICK TO RACE</span>
+      <span class="sound-gate-sub">SOUND ON - CLICK ANYWHERE OR PRESS START</span>
+    </button>
+
+    <aside id="netplayPanel" class="np-panel" aria-label="2P LAN netplay setup" aria-live="polite">
+      <div class="np-head">
+        <div>
+          <div class="np-kicker">2P LAN</div>
+          <h2>NETPLAY</h2>
+        </div>
+        <button id="npClose" class="np-close" type="button" title="Hide netplay panel" aria-label="Hide netplay panel">X</button>
+      </div>
+
+      <div class="np-status" id="npStatus">
+        <span class="np-pill" id="npRelay" data-state="checking">RELAY CHECKING</span>
+        <span class="np-pill" id="npRole" data-state="idle">NOT JOINED</span>
+        <span class="np-pill" id="npPlayers">0/2</span>
+        <span class="np-pill" id="npRtc" data-state="idle">RTC -</span>
+        <span class="np-pill" id="npVideo" data-state="idle">VIDEO -</span>
+      </div>
+
+      <label class="np-quality" for="npQuality">
+        <span>QUALITY</span>
+        <select id="npQuality" aria-label="Netplay stream quality">
+          <option value="auto" selected>AUTO</option>
+          <option value="low">LOW - 1.5 Mbps / 30 fps</option>
+          <option value="med">MED - 4 Mbps / 60 fps</option>
+          <option value="high">HIGH - 8 Mbps / 60 fps</option>
+        </select>
+      </label>
+
+      <div class="np-server" id="npServer">relay: -</div>
+
+      <label class="np-field" for="npName">
+        <span>PLAYER NAME</span>
+        <input id="npName" type="text" maxlength="20" autocomplete="nickname" placeholder="PLAYER">
+      </label>
+
+      <div class="np-flow">
+        <p><b>HOST</b> creates a room. This machine runs the selected disc (Ridge Racer Type 4, Rage Racer or Ridge Racer 1994) and streams its canvas at 60 fps. Host audio is not captured yet, so the guest is video-only. Keep the host tab in front.</p>
+        <p><b>GUEST</b> opens the same origin, sees the room and joins. The guest sends pad/keyboard input to the host as player 2. On Rage Racer and Ridge Racer 1994 (shared car) the host folds that input onto player 1, so both pads drive the one car.</p>
+        <p class="np-note">Same origin on both machines, e.g. <code id="npOrigin">http://localhost:8080/play-net</code>. Do not mix <code>localhost</code> and the LAN IP.</p>
+      </div>
+
+      <section class="np-block" aria-labelledby="npHostTitle">
+        <h3 id="npHostTitle">HOST A ROOM</h3>
+        <label class="np-field" for="npRoomName">
+          <span>ROOM NAME</span>
+          <input id="npRoomName" type="text" maxlength="20" value="R4 NETPLAY">
+        </label>
+        <div class="np-row">
+          <label class="np-field np-field-small" for="npMaxPlayers">
+            <span>PLAYERS</span>
+            <select id="npMaxPlayers">
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </label>
+          <button id="npCreate" class="np-action np-action-primary" type="button">CREATE ROOM</button>
+        </div>
+      </section>
+
+      <section class="np-block" aria-labelledby="npJoinTitle">
+        <div class="np-block-head">
+          <h3 id="npJoinTitle">JOIN A ROOM</h3>
+          <button id="npRefresh" class="np-mini" type="button" title="Refresh room list">REFRESH</button>
+        </div>
+        <div id="npRooms" class="np-rooms"><div class="np-empty">Waiting for the emulator to boot...</div></div>
+      </section>
+
+      <section class="np-block np-ghost" id="npGhost" aria-labelledby="npGhostTitle" hidden>
+        <div class="np-block-head">
+          <h3 id="npGhostTitle">GHOST</h3>
+          <span class="np-ghost-tag">GHOST REPLAY (SEQUENTIAL)</span>
+        </div>
+        <div class="np-ghost-status" id="npGhostStatus" data-state="idle" aria-live="polite">GHOST // WAITING FOR RIVAL</div>
+        <div class="np-ghost-meta">
+          <span id="npGhostTurn">DRIVER: HOST</span>
+          <span id="npGhostPeer">NO RIVAL TAPE</span>
+        </div>
+        <div class="np-ghost-live" id="npGhostLive" hidden>
+          <span class="np-ghost-live-tag">LIVE GHOST</span>
+          <button id="npGhostLiveBtn" class="np-mini" type="button" aria-pressed="false" data-state="off" title="Toggle the live ghost car (Route B)">OFF</button>
+          <span class="np-ghost-live-meta" id="npGhostLiveMeta">no tape yet</span>
+        </div>
+        <p class="np-ghost-note">Turn-based Time Trial on the host core. One driver per run; the run you finish becomes the other seat's post-race replay. With <code>?mpLiveGhost=1</code> the rival tape is also applied to a spare car slot <b>while you race</b> - Rage Racer Grand Prix and Ridge Racer 1994's race screen only (no Rage Time Attack draw path yet). The live ghost is drawn, not simulated.</p>
+        <div class="np-row">
+          <button id="npGhostCapture" class="np-action" type="button" title="Read the native tape now">CAPTURE NOW</button>
+          <button id="npGhostReplay" class="np-action" type="button" title="Swap the rival tape into the native replay" hidden>WATCH RIVAL</button>
+        </div>
+        <div class="np-ghost-storage" id="npGhostStorage">pending</div>
+      </section>
+
+      <div class="np-actions">
+        <button id="npMenu" class="np-action" type="button" title="Open EmulatorJS's built-in netplay menu">EJS NETPLAY MENU</button>
+        <button id="npLeave" class="np-action" type="button" disabled>LEAVE ROOM</button>
+      </div>
+
+      <div id="npLog" class="np-log" role="log" aria-live="polite"></div>
+
+      <div class="np-foot">
+        <span>EmulatorJS <b id="npVersion">4.3.0-pre</b></span>
+        <span id="npPath">/emulator43/data/</span>
+      </div>
+    </aside>
+
+    <div id="npChips" class="np-chips">
+      <button id="npRematch" class="np-chip np-rematch" type="button" hidden
+        aria-label="Rematch in the 2P lounge" title="Back to the 2P lounge for another race">
+        <span class="np-chip-dot"></span>
+        <span>REMATCH</span>
+      </button>
+      <button id="npChip" class="np-chip" type="button" hidden aria-label="Open netplay panel">
+        <span class="np-chip-dot"></span>
+        <span id="npChipText">NETPLAY</span>
+        <span id="npChipDebug" class="np-chip-debug" hidden></span>
+      </button>
+    </div>
+  </main>
+
+  <footer id="play-foot">
+    <span id="footCore">pcsx_rearmed</span>
+    <span class="dot">|</span>
+    <span id="footRom">/rom/...</span>
+    <span class="dot">|</span>
+    <span id="footTiming">-</span>
+    <label class="filter-picker"><span>FILTER</span>
+      <select id="filterSelect" aria-label="Video filter">
+        <option value="dlss5">DLSS 5</option>
+        <option value="off">Off</option>
+        <option value="scanlines">Scanlines</option>
+        <option value="crt">CRT</option>
+        <option value="vignette">Vignette</option>
+        <option value="sharp">Sharp</option>
+      </select>
+    </label>
+    <a id="footSingleLink" href="/play">SINGLE PLAYER</a>
+    <a id="footLink" href="/">LAN ARCADE</a>
+  </footer>
+</div>
+
+<button id="fsExit" class="fs-exit" type="button" title="Exit fullscreen (F / Esc)" hidden>
+  EXIT FULLSCREEN X
+</button>
+
+<script src="/js/play-net.js?v=20261106c"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+import puppeteer from 'puppeteer-core';
+const brave='C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe';
+const browser=await puppeteer.launch({executablePath:brave,headless:'new',args:['--no-sandbox','--disable-gpu','--autoplay-policy=no-user-gesture-required','--window-size=1280,800'],defaultViewport:{width:1280,height:800}});
+const page=await browser.newPage();
+const logs=[]; page.on('console',m=>{logs.push(`[${m.type()}] ${m.text()}`); if(/EJS|bios|rom|error|fail/i.test(m.text())) console.log('CONSOLE',m.type(),m.text().slice(0,300));});
+page.on('pageerror',e=>console.log('PAGEERROR',e.message));
+page.on('requestfailed',r=>console.log('REQFAIL',r.url(),r.failure()?.errorText));
+await page.goto('http://127.0.0.1:8100/',{waitUntil:'domcontentloaded',timeout:30000});
+await new Promise(r=>setTimeout(r,8000));
+console.log('DOM',await page.evaluate(()=>({buttons:[...document.querySelectorAll('button')].map(b=>({text:b.textContent.trim().slice(0,40),id:b.id,cls:b.className})).slice(0,20), canvas:document.querySelectorAll('canvas').length, text:document.body.innerText.slice(0,300)})));
+await page.evaluate(()=>{const b=[...document.querySelectorAll('button')].find(x=>/start|play|boot/i.test(x.textContent)); if(b) b.click();});
+await new Promise(r=>setTimeout(r,4000));
+console.log('AFTER CLICK',await page.evaluate(()=>({canvas:document.querySelectorAll('canvas').length, text:document.body.innerText.slice(0,300)})));
+await new Promise(r=>setTimeout(r,45000));
+console.log('FINAL',await page.evaluate(()=>({canvas:document.querySelectorAll('canvas').length, text:document.body.innerText.slice(0,300)})));
+await page.screenshot({path:'../_runtime/ejs-test/boot.png'});
+console.log('LOGS',logs.slice(-30).join('\n'));
+await browser.close();

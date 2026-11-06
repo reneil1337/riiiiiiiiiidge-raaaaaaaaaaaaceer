@@ -1,0 +1,355 @@
+/* Ridge City welcome hub inside the cabinet shell. */
+
+:root {
+  --w-bg: #07080c;
+  --w-panel: #0c0e15;
+  --w-panel-2: #14161f;
+  --w-text: #f2f3f7;
+  --w-muted: #9aa0ae;
+  --w-line: rgba(255, 255, 255, .12);
+  --w-accent: #e10600;
+  --w-accent-2: #29d3ff;
+  --w-yellow: #ffd166;
+  --w-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --w-display: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--w-bg);
+  color: var(--w-text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background-image:
+    linear-gradient(115deg, rgba(225, 6, 0, .04) 0 2px, transparent 2px 100%),
+    radial-gradient(1100px 560px at 84% -10%, rgba(41, 211, 255, .10), transparent 60%),
+    radial-gradient(900px 500px at 0% 0%, rgba(225, 6, 0, .09), transparent 55%);
+  background-size: 48px 48px, 100% 100%, 100% 100%;
+}
+
+.wwrap {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: clamp(18px, 3.5vw, 42px);
+}
+
+.whero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 18px;
+  padding: clamp(22px, 5vw, 54px);
+  border: 1px solid var(--w-line);
+  background:
+    linear-gradient(108deg, rgba(5, 7, 15, .97) 0 55%, rgba(5, 7, 15, .56) 55% 100%),
+    repeating-linear-gradient(115deg, #0a1120 0 16px, #0c1527 16px 32px);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+}
+
+.whero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 84% 24%, rgba(225, 6, 0, .4), transparent 30%),
+    radial-gradient(circle at 96% 86%, rgba(41, 211, 255, .22), transparent 32%);
+}
+
+.whero > * { position: relative; z-index: 1; }
+
+.wkicker {
+  margin: 0 0 9px;
+  color: var(--w-accent-2);
+  font-family: var(--w-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .22em;
+}
+
+.whero h1 {
+  margin: 0;
+  color: #fff;
+  font-family: var(--w-display);
+  font-size: clamp(2.5rem, 6.8vw, 5.4rem);
+  font-style: italic;
+  font-weight: 800;
+  line-height: .86;
+  letter-spacing: -.01em;
+  text-transform: uppercase;
+}
+
+.whero h1 em {
+  color: var(--w-accent);
+  font-style: italic;
+  text-shadow: 0 0 26px rgba(225, 6, 0, .35);
+}
+
+.wsub {
+  max-width: 64ch;
+  margin: 16px 0 20px;
+  color: #c0cadb;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.wactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border: 1px solid var(--w-line);
+  background: var(--w-panel-2);
+  color: var(--w-text);
+  font-family: var(--w-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wbtn:hover { border-color: var(--w-accent-2); }
+.wbtn:focus-visible {
+  outline: 2px solid var(--w-yellow);
+  outline-offset: 2px;
+}
+.wbtn--primary {
+  border-color: var(--w-accent);
+  background: linear-gradient(110deg, #a50400, #e10600);
+  color: #fff;
+}
+.wbtn--2p {
+  border-color: var(--w-accent-2);
+  background: color-mix(in srgb, var(--w-accent-2) 12%, var(--w-panel-2));
+  color: #bff4ff;
+}
+
+.wstatus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--w-line);
+  color: var(--w-muted);
+  font-family: var(--w-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.wstatus b { color: var(--w-yellow); font-size: 11px; }
+.wlive { display: inline-flex; align-items: center; gap: 6px; color: #8affc0; }
+.wlive i { width: 6px; height: 6px; border-radius: 50%; background: #6ef2a2; box-shadow: 0 0 10px rgba(110, 242, 162, .8); }
+
+.wgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.wcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 178px;
+  padding: 16px;
+  border: 1px solid var(--w-line);
+  background: var(--w-panel);
+  color: var(--w-text);
+  text-decoration: none;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.wcard::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--card-accent);
+}
+
+.wcard--r4 { --card-accent: #e10600; }
+.wcard--2p { --card-accent: #29d3ff; }
+.wcard--docs { --card-accent: #ffd166; }
+
+/* RACE DAY — the primary hub CTA. It spans the row above the disc / lounge /
+   manual cards, so it reads first without reordering the existing entries. */
+.wcard--mmo {
+  --card-accent: #e10600;
+  grid-column: 1 / -1;
+  min-height: 0;
+  padding: clamp(18px, 2.6vw, 26px);
+  border-color: rgba(225, 6, 0, .5);
+  background:
+    linear-gradient(108deg, rgba(225, 6, 0, .26) 0 34%, rgba(7, 8, 12, .92) 34% 100%),
+    repeating-linear-gradient(115deg, #0b0d14 0 14px, #0d1019 14px 28px);
+}
+
+.wcard--mmo::before { width: 4px; }
+
+.wcard--mmo h2 {
+  margin: 12px 0 6px;
+  font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+  line-height: .92;
+  letter-spacing: -.01em;
+}
+
+.wcard--mmo .wlead {
+  margin: 0 0 5px;
+  color: #fff;
+  font-family: var(--w-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+
+.wcard--mmo .wmeta {
+  margin: 0;
+  color: #a9bdd0;
+  font-family: var(--w-mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+.wcard--mmo .wgo { padding-top: 14px; font-size: 9px; }
+
+.wpill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--w-yellow);
+  border-radius: 2px;
+  background: rgba(255, 209, 102, .16);
+  color: var(--w-yellow);
+  font-family: var(--w-mono);
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: .16em;
+  vertical-align: 1px;
+}
+
+.wcard:hover { border-color: var(--card-accent); }
+/* The cards are clipped with clip-path, which also clips an outside outline, so
+   the focus ring is drawn inset and the border takes the highlight colour. */
+.wcard:focus-visible {
+  outline: 2px solid var(--w-yellow);
+  outline-offset: -3px;
+  border-color: var(--w-yellow);
+}
+.wtag { color: var(--card-accent); font-family: var(--w-mono); font-size: 8px; letter-spacing: .12em; }
+.wcard h2 {
+  margin: 16px 0 6px;
+  color: #fff;
+  font-family: var(--w-display);
+  font-size: 1.35rem;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.wcard p { margin: 0; color: #aeb8c8; font-size: 12px; line-height: 1.5; }
+.wgo { margin-top: auto; padding-top: 12px; color: var(--card-accent); font-family: var(--w-mono); font-size: 8px; font-weight: 700; letter-spacing: .08em; }
+
+.wteams {
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--w-line);
+}
+
+.wteamhead h2 {
+  margin: 4px 0 14px;
+  color: #fff;
+  font-family: var(--w-display);
+  font-size: clamp(1.4rem, 3vw, 2.1rem);
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.wteamgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wteam {
+  position: relative;
+  padding: 13px;
+  border: 1px solid var(--w-line);
+  background: var(--w-panel-2);
+  border-top: 3px solid var(--team);
+}
+
+.wteam--sol { --team: #7fa8ff; }
+.wteam--pac { --team: #ff6b5a; }
+.wteam--map { --team: #ff8fb3; }
+.wteam--dig { --team: #2dd4e8; }
+
+.wno {
+  position: absolute;
+  right: 10px;
+  top: 4px;
+  color: color-mix(in srgb, var(--team) 40%, transparent);
+  font-family: var(--w-display);
+  font-size: 40px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wteam h3 {
+  position: relative;
+  margin: 6px 0 6px;
+  color: #fff;
+  font-family: var(--w-display);
+  font-size: 12px;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.wteam p { margin: 0; color: var(--w-muted); font-size: 10px; line-height: 1.45; }
+
+.wfoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--w-line);
+  color: #6f7684;
+  font-family: var(--w-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+}
+
+@media (max-width: 980px) {
+  .wgrid { grid-template-columns: 1fr 1fr; }
+  .wgrid > :last-child { grid-column: 1 / -1; }
+  .wteamgrid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+  .wwrap { padding: 14px; }
+  .whero { padding: 20px; }
+  .whero h1 { font-size: clamp(2.4rem, 14vw, 3.6rem); }
+  .wgrid { grid-template-columns: 1fr; }
+  .wgrid > :last-child { grid-column: auto; }
+  .wcard--mmo { grid-column: auto; padding: 16px; }
+  .wcard--mmo h2 { font-size: clamp(1.7rem, 11vw, 2.4rem); }
+  .wcard--mmo .wlead { font-size: 10px; letter-spacing: .14em; }
+  .wteamgrid { grid-template-columns: 1fr; }
+  .wbtn { width: 100%; justify-content: space-between; }
+}

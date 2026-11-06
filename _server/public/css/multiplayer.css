@@ -1,0 +1,534 @@
+/* 2P head-to-head lobby inside the cabinet shell. */
+
+:root {
+  --m-bg: #07080c;
+  --m-panel: #0c0e15;
+  --m-panel-2: #14161f;
+  --m-text: #f2f3f7;
+  --m-muted: #9aa0ae;
+  --m-line: rgba(255, 255, 255, .12);
+  --m-accent: #e10600;
+  --m-accent-2: #29d3ff;
+  --m-yellow: #ffd166;
+  --m-ok: #6ef2a2;
+  --m-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --m-display: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--m-bg);
+  color: var(--m-text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background-image:
+    linear-gradient(115deg, rgba(225, 6, 0, .04) 0 2px, transparent 2px 100%),
+    radial-gradient(900px 500px at 84% -10%, rgba(41, 211, 255, .09), transparent 60%),
+    radial-gradient(800px 480px at 0% 0%, rgba(225, 6, 0, .08), transparent 55%);
+  background-size: 48px 48px, 100% 100%, 100% 100%;
+}
+
+.mwrap {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: clamp(18px, 3.5vw, 40px);
+}
+
+.mhead { margin-bottom: 18px; }
+
+.mkicker {
+  margin: 0 0 7px;
+  color: var(--m-accent-2);
+  font-family: var(--m-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .22em;
+}
+
+.mhead h1 {
+  margin: 0;
+  color: #fff;
+  font-family: var(--m-display);
+  font-size: clamp(2rem, 5.2vw, 3.6rem);
+  font-style: italic;
+  font-weight: 800;
+  line-height: .92;
+  text-transform: uppercase;
+}
+
+.msub {
+  max-width: 66ch;
+  margin: 10px 0 0;
+  color: #b6c0d1;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mstart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 16px 0 22px;
+  padding: 14px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel);
+}
+
+.mfield {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.mfield span {
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+}
+
+.mfield input,
+.mfield select {
+  padding: 8px 9px;
+  border: 1px solid var(--m-line);
+  border-radius: 3px;
+  background: var(--m-panel-2);
+  color: var(--m-text);
+  font-size: 12px;
+}
+
+.mfield--code input { width: 88px; text-transform: uppercase; letter-spacing: .16em; }
+
+/* Disc picker on the start card (the lounge is multi-game since 2026-11-06). */
+.mfield--game {
+  flex: 0 1 280px;
+  min-width: 240px;
+}
+
+.mfield--game > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mfield--game select {
+  width: 100%;
+  font-family: var(--m-mono);
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+/* Mode line under the disc picker: "<modeLabel> · <seatsLabel>". */
+.mhint {
+  margin: 2px 0 0;
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  line-height: 1.5;
+}
+
+/* Drive mode on the start card (Route A ghost = turn-based time trial). */
+.mfield--drive {
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+
+.mfield--drive.is-off { opacity: .55; }
+
+.mseg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: 3px;
+  background: var(--m-panel-2);
+}
+
+.mseg-btn {
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+
+.mseg-btn + .mseg-btn { border-left: 1px solid var(--m-line); }
+
+.mseg-btn[aria-pressed="true"] {
+  background: linear-gradient(110deg, #a50400, #e10600);
+  color: #fff;
+}
+
+.mseg-btn[data-drive="ghost"][aria-pressed="true"] {
+  background: linear-gradient(110deg, #0b4b64, #127d9e);
+  color: #eafaff;
+}
+
+.mseg-btn:disabled { color: #5c626f; cursor: not-allowed; }
+.mseg-btn[aria-pressed="true"]:disabled {
+  background: #262a35;
+  color: #9aa0ae;
+}
+.mseg-btn:focus-visible { outline: 2px solid var(--m-accent-2); outline-offset: -2px; }
+
+.mbtn {
+  padding: 9px 13px;
+  border: 1px solid var(--m-line);
+  border-radius: 3px;
+  background: var(--m-panel-2);
+  color: var(--m-text);
+  font-family: var(--m-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+
+.mbtn:hover { border-color: var(--m-accent); }
+.mbtn--primary {
+  border-color: var(--m-accent);
+  background: linear-gradient(110deg, #a50400, #e10600);
+  color: #fff;
+}
+.mbtn--ready { min-width: 150px; padding: 14px; font-size: 11px; }
+.mbtn--ready[aria-pressed="true"] {
+  border-color: var(--m-ok);
+  background: linear-gradient(110deg, #0b5d3c, #128a57);
+}
+
+.mlistwrap { margin-bottom: 18px; }
+.mlisthead { display: flex; align-items: center; justify-content: space-between; }
+.mlisthead h2 {
+  margin: 0;
+  color: var(--m-text);
+  font-family: var(--m-display);
+  font-size: 14px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mlinkbtn {
+  border: 0;
+  background: none;
+  color: var(--m-accent-2);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  cursor: pointer;
+}
+
+.mrooms {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.mroom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel);
+}
+
+.mroom-code {
+  color: var(--m-yellow);
+  font-family: var(--m-mono);
+  font-size: 12px;
+  letter-spacing: .14em;
+}
+
+.mroom-host { flex: 1; color: var(--m-muted); font-size: 11px; }
+.mroom-count { color: var(--m-muted); font-family: var(--m-mono); font-size: 9px; }
+.mroom-game {
+  padding: 1px 5px;
+  border: 1px solid var(--m-line);
+  color: var(--m-yellow);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+.mempty { color: var(--m-muted); font-size: 11px; margin: 6px 0; }
+
+.mroom {
+  padding: 14px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel);
+}
+
+.mroomhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--m-line);
+}
+
+.mroomhead strong {
+  display: block;
+  color: var(--m-yellow);
+  font-family: var(--m-display);
+  font-size: 32px;
+  font-style: italic;
+  letter-spacing: .16em;
+}
+
+.minvite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 220px;
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+}
+
+.minvite code {
+  overflow: hidden;
+  color: #cfd7e4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Room disc row: the room's disc + mode for both seats, host-only selector. */
+.mroomgame {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--m-line);
+}
+
+.mroomgame-disc { flex: 1 1 240px; min-width: 0; }
+
+.mroomgame .mkicker { margin-bottom: 4px; }
+
+.mroomgame-name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--m-yellow);
+  font-family: var(--m-display);
+  font-size: 16px;
+  font-style: italic;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.mfield--roomgame { flex: 0 1 220px; min-width: 200px; }
+
+/* Room drive row: the room's drive mode, host-only switch, and (in ghost) this
+   run's driver. Live rooms keep the plain shared-car line. */
+.mroomdrive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--m-line);
+}
+
+.mroomdrive-state { flex: 1 1 240px; min-width: 0; }
+.mroomdrive-state .mkicker { margin-bottom: 4px; }
+
+.mroomdrive-name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--m-yellow);
+  font-family: var(--m-display);
+  font-size: 16px;
+  font-style: italic;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.mroomturn {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--m-line);
+}
+
+.mroomturn .mroomdrive-name { flex: 0 0 auto; }
+
+/* Room-list badge for a ghost room (drive is per room, turn is not listed). */
+.mroom-drive {
+  padding: 1px 5px;
+  border: 1px solid var(--m-accent-2);
+  color: var(--m-accent-2);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+
+.mslots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.mslot {
+  padding: 13px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel-2);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+.mtag {
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+}
+
+.mslot h3 {
+  margin: 8px 0 10px;
+  color: #fff;
+  font-family: var(--m-display);
+  font-size: 18px;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.mready {
+  margin: 8px 0 0;
+  color: var(--m-muted);
+  font-family: var(--m-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+}
+
+.mready.is-ready { color: var(--m-ok); }
+
+.mgrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.mcard {
+  flex: 1;
+  min-width: 240px;
+  padding: 12px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel-2);
+}
+
+.mcard strong {
+  display: block;
+  margin: 7px 0 4px;
+  color: var(--m-yellow);
+  font-family: var(--m-display);
+  font-size: 16px;
+  letter-spacing: .04em;
+}
+
+.mcard p { margin: 0; color: var(--m-muted); font-size: 11px; }
+
+.mfoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--m-line);
+  color: #6f7684;
+  font-family: var(--m-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+}
+
+.mrace {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 7, 15, .94);
+  backdrop-filter: blur(8px);
+}
+
+.mrace-panel {
+  width: min(560px, 92vw);
+  padding: 26px;
+  border: 1px solid var(--m-accent);
+  background: var(--m-panel);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+  text-align: center;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+
+.mrace-panel h2 {
+  margin: 10px 0;
+  color: #fff;
+  font-family: var(--m-display);
+  font-size: clamp(1.7rem, 5vw, 3rem);
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.mrace-panel p { color: var(--m-muted); font-size: 12px; }
+.mcount {
+  margin: 18px 0 8px;
+  color: var(--m-accent);
+  font-family: var(--m-display);
+  font-size: 72px;
+  font-style: italic;
+  line-height: 1;
+}
+.mrace-note { font-family: var(--m-mono); font-size: 8px; letter-spacing: .16em; }
+
+@media (max-width: 640px) {
+  .mwrap { padding: 14px; }
+  .mstart { padding: 10px; }
+  .mfield { min-width: 100%; }
+  .mfield--code { min-width: 0; width: 100px; flex: 1; }
+  .mfield--code input { width: 100%; }
+  .mfield--game { flex: 1 1 100%; width: 100%; min-width: 100%; }
+  .mfield--drive { flex: 1 1 100%; width: 100%; min-width: 100%; }
+  .mseg { width: 100%; }
+  .mseg-btn { flex: 1; text-align: center; }
+  .mfield--roomgame { flex: 1 1 100%; width: 100%; min-width: 100%; }
+  .mroomgame { gap: 10px; }
+  .mroomgame-disc { flex: 1 1 100%; }
+  .mroomdrive { gap: 10px; }
+  .mroomdrive-state { flex: 1 1 100%; }
+  .mroomturn { flex: 1 1 100%; }
+  .mroom-row { flex-wrap: wrap; }
+  .mroom-host {
+    flex: 1 1 120px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mslots { grid-template-columns: 1fr; }
+  .mroomhead strong { font-size: 26px; }
+  .mbtn--ready { width: 100%; }
+}

@@ -1,0 +1,96 @@
+---
+title: Rage Racer
+description: Namco's 1996 PlayStation racer — long courses, a garage economy and a much harder drift model.
+---
+
+<dl className="rr-spec">
+  <div><dt>Release</dt><dd>1996 (JP) · 1997 (US/EU)</dd></div>
+  <div><dt>Developer</dt><dd>Namco</dd></div>
+  <div><dt>Platform</dt><dd>PlayStation</dd></div>
+  <div><dt>USA serial</dt><dd>SLUS-00403</dd></div>
+  <div><dt>Region</dt><dd>USA</dd></div>
+  <div><dt>Players</dt><dd>1 on disc · lounge: shared car</dd></div>
+  <div><dt>Courses</dt><dd>4 (each run forward and reverse)</dd></div>
+  <div><dt>Disc tracks</dt><dd>17 CD tracks</dd></div>
+  <div><dt>Disc here</dt><dd>CHD 472 MB (495,297,808 bytes)</dd></div>
+  <div><dt>Game key</dt><dd><code>rage</code> · EJS id 5</dd></div>
+  <div><dt>Status</dt><dd><span className="rr-pill">1P</span></dd></div>
+</dl>
+
+## The game
+
+*Rage Racer* is the third Ridge Racer and the awkward, brilliant middle child.
+It drops the sunlit resort tone of the first two games for something colder and
+more industrial, and it replaces the short arcade laps with long point-to-point
+courses through mountains, tunnels and coastal roads.
+
+The structure is a career, not a coin-op:
+
+- You start with a slow car and a small bank balance.
+- Prize money buys upgrades and new machines.
+- The **Class** system gates the faster cars behind race results.
+- The course list grows as you progress; the disc carries **4 courses**, each run
+  forward and reverse.
+- The handling is heavier and less forgiving than Type 4. The drift is there,
+  but you have to commit earlier and manage the exit.
+
+It is the hardest of the three games in this cabinet, and the one most people
+bounce off before they learn the braking points.
+
+## How it runs in this project
+
+| Path | What happens |
+| --- | --- |
+| `/play?game=rage` | PCSX-Rearmed in the browser, `disc/rage-racer.chd` |
+| `/play-net?game=rage` | Netplay page; the guest sees the host's screen and sends pad input, but there is no second car |
+| `/multiplayer` | 2P LOUNGE with **Rage Racer** in the **DISC** selector: **shared car** — one car, both pads, no split screen |
+| `/lobby` | Native fallback is Type 4 only |
+| Native | Not the pinned recomp target in this workspace |
+
+:::note{title="Multiplayer: shared car, not a second car"}
+Rage Racer is a **single-player** disc — it has no VS mode. The lounge can still
+put two people in it: choose **Rage Racer** in the `/multiplayer` **DISC**
+selector and the room runs as a **SHARED CAR**. The server announces one of the
+four courses (Mythical Coast, Over Pass City, Lakeside Gate, The Extreme Oval) and one
+of the four car slots, but the plan is only an announcement — **the host still
+picks the course and car by hand in the disc's own menus** and starts a normal
+single-player race. The guest's pad is then merged into the host car
+(`player 1 → player 0`), so both people drive the same car.
+
+Limits: **no split screen, no second car, no automatic menu macro.** R4 is the
+disc with the calibrated VS Battle macro; Rage Racer has none. The transport is
+unchanged — host-authoritative WebRTC stream, guest pad input, relay on `:3010`,
+same origin — and the evidence for this mode is
+`netplay transport; in-game mode unverified`, so the stream and pad path work and
+the host path has a 14/14 host-only harness (boot, manual stage, remap install),
+but a live shared-car race has no harness. Full detail:
+[Shared car](/multiplayer/shared-car).
+:::
+
+## Start
+
+```text
+http://<host-lan-ip>:8080/play?game=rage
+```
+
+The first load is the 472 MB CHD. It is the largest of the three discs; cold-cache
+first-boot timing has not been measured.
+
+## What to expect
+
+- **Boot:** Namco logo, then the title/menu (attract sequence unverified).
+- **Save data:** EmulatorJS save states stay in the browser; the native
+  memory-card files are not used by the browser path.
+- **BIOS:** OpenBIOS by default, `?bios=hle` to force HLE.
+- **Filter:** the same FILTER menu as Type 4 (DLSS 5 visual grade, scanlines,
+  CRT, vignette, sharp).
+- **Fullscreen:** the header button or `F`; `Esc` exits.
+
+## Controls
+
+The emulator bindings are the same as Type 4, but the in-game actions differ:
+**Square** brakes / reverses, **Circle** is the handbrake, and **Triangle**
+changes the camera (PSX build unverified). In the browser, EmulatorJS exposes
+remapping in its control settings. Rage Racer has no native recomp path in this
+workspace, so the native fallback layout is R4-only; see
+[Controls](/reference/controls) for the Type 4 matrix.

@@ -1,0 +1,153 @@
+---
+title: Native recomp
+description: The Windows PSXRecomp build — install layout, disc verification, controller and launch.
+---
+
+The native path runs **PSXRecomp**'s translated MIPS as host code with OpenGL
+presentation. It is the sharpest, lowest-latency way to play in this workspace,
+and the runtime the host-stream fallback captures.
+
+## Install layout
+
+```text
+<repo>\RidgeRacer4Recomp\
+  Ridge_Racer_4_Recompiled.exe
+  game.toml
+  README.md
+  bios\
+    openbios.bin
+    OpenBIOS.LICENSE
+  launcher\
+    ridgeRacer4.bat
+    ridgeRacer4.ps1
+```
+
+This is the **repaired v1.0.0 Windows package**. OpenBIOS is bundled; no retail
+BIOS is required for the default launch.
+
+## Disc
+
+The pinned target is the USA release:
+
+| Item | Value |
+| --- | --- |
+| Serial | `SLUS-00797` |
+| Region | NTSC-U |
+| Track 1 size | 621,421,920 bytes |
+| Track 1 MD5 | `bf1d92037b1b2be83b459c11f0b89eb6` |
+| Disc folder | `<repo>\disc\` |
+
+The runtime launcher reports `Serial SLUS-00797`, `Region NTSC-U`, `ISO head: OK`,
+`Disc verified` when the CUE/BIN pair is correct. A bare CUE, a ZIP, or a PAL/JPN
+image will not pass.
+
+## Launch
+
+### Launcher
+
+```text
+<repo>\RidgeRacer4Recomp\launcher\ridgeRacer4.bat
+```
+
+Use Browse to select the `.cue` (not a track `.bin`), keep **OpenBIOS** selected,
+then **Launch Game**.
+
+### Direct
+
+```powershell
+& "<repo>\RidgeRacer4Recomp\Ridge_Racer_4_Recompiled.exe" `
+  --no-launcher `
+  --bios "<repo>\RidgeRacer4Recomp\bios\openbios.bin" `
+  --disc "<repo>\disc\R4 - Ridge Racer Type 4 (USA).cue"
+```
+
+### Wrapper
+
+```text
+<repo>\Play Ridge Racer 4.bat
+```
+
+The wrapper runs the direct command with `--no-launcher`. It sets the CUE's
+directory as the working directory, so the CUE's relative `FILE` entry resolves.
+
+## Controller
+
+The runtime log confirms the pad is opened:
+
+```text
+psxrecomp runtime: opened controller for slot: Xbox One Controller
+```
+
+That confirms the pad is opened, but button-by-button mapping was not recorded.
+Use the launcher's Player 1 dropdown and [Controls](/reference/controls) for the
+intended mapping.
+
+Settings live in `RidgeRacer4Recomp\settings.toml`:
+
+```toml
+[controller]
+p1_device  = "0300938d5e040000ff02000000007200"  # pad GUID; "gamepad" also works
+p1_mode    = "analog"
+p1_deadzone = 3276
+```
+
+`input.ini` carries the SDL mapping (`a`=Cross, `b`=Circle, `x`=Square,
+`y`=Triangle, `start`=Start, `back`=Select). The keyboard fallback is in
+`keybinds.ini`. See [Controls](/reference/controls) for the full matrix.
+
+If the pad is reconnected and is not picked up, set `p1_device = "gamepad"` or
+reselect it in the launcher's Player 1 dropdown.
+
+## Video and fullscreen
+
+`settings.toml` defaults in this workspace:
+
+```toml
+[video]
+window_width = 960
+fullscreen   = 0
+aspect_ratio = "4:3"
+```
+
+:::note{title="Exclusive fullscreen caveat"}
+`fullscreen = 2` is **Exclusive** and switched the desktop to **1024×768** in
+this workspace, which looks "zoomed in". Closing the game restores the desktop.
+The stable setting is `fullscreen = 0`. The Settings page documents the in-game
+hotkey **Alt+Return**, but it did not visibly toggle fullscreen in this workspace.
+Borderless is still being verified.
+:::
+
+## OpenBIOS vs custom BIOS
+
+- **OpenBIOS** is the PCSX-Redux project's freely licensed replacement BIOS. It
+  is bundled here and is the default.
+- **Custom BIOS** passes a user dump to the runtime; it is not copied or
+  redistributed. A file existing on disk does not guarantee compatibility — the
+  runtime validates the image and the compiled backend. The pinned framework
+  recognises `SCPH1001` (512 KiB, CRC32 `37157331`).
+
+## What the log tells you
+
+Run the EXE from a terminal (or redirect stdout/stderr) when diagnosing:
+
+```powershell
+& ".\Ridge_Racer_4_Recompiled.exe" --no-launcher `
+  --bios ".\bios\openbios.bin" --disc "..\disc\R4 - Ridge Racer Type 4 (USA).cue" `
+  *> run.log
+```
+
+Messages to look for:
+
+| Line | Meaning |
+| --- | --- |
+| `loaded game config … (RidgeRacer4, SLUS-00797)` | `game.toml` parsed |
+| `disc region NTSC-U (serial SLUS-00797)` | disc header read |
+| `opened controller for slot: …` | pad accepted |
+| `renderer = opengl` | GL path selected |
+| `bios_backend=LLE … image=OPENBIOS` | BIOS boot path |
+
+## Files created at runtime
+
+`settings.toml`, `input.ini`, `keybinds.ini`, `card1.mcd`, `card2.mcd`,
+`bios.cfg`, `disc.cfg`, `overlay_captures.json*`, `cache\`, and `mods\` appear in
+the install folder. They are user state, not part of the release.

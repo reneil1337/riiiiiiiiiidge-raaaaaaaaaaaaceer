@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ridge Racer // 2P LAN Netplay</title>
+<!-- Compatibility redirect for an older express.static(public) process that
+     predates the /play-net route. The canonical page is /play-net.html. -->
+<script>
+  (function () {
+    var q = location.search || '';
+    var h = location.hash || '';
+    location.replace('/play-net.html' + q + h);
+  })();
+</script>
+<meta http-equiv="refresh" content="0;url=/play-net.html">
+</head>
+<body>
+<p>Opening <a href="/play-net.html">Ridge Racer 2P LAN netplay</a>...</p>
+</body>
+</html>

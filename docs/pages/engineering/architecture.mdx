@@ -1,0 +1,255 @@
+---
+title: Architecture
+description: The browser arcade, the native recompilation and the host-stream fallback, side by side.
+---
+
+The workspace has three play paths over two runtimes and three multiplayer
+transports. `/play` and `/play-net` both run the PCSX-Rearmed core as WebAssembly
+in the browser; `/lobby` runs the PSXRecomp host x64 build and streams it. They
+share the same disc, BIOS and game data, but nothing else. Above them sits the
+cabinet shell at `/`: it owns the audio element, the top bar and the iframe that
+loads every view, including `/welcome`, `/games`, `/multiplayer`, `/lobby` and
+`/docs`.
+
+## At a glance
+
+| Layer | Browser runtime (`/play`, `/play-net`) | Native runtime (`/lobby`) |
+| --- | --- | --- |
+| Game code | PCSX-Rearmed (WASM) | PSXRecomp (host x64) |
+| Video | browser canvas; WebRTC to the guest on `/play-net` | OpenGL window → ffmpeg gdigrab → MPEG-TS |
+| Audio | Web Audio; netplay stream carries **no audio track** today (guest is silent) | WASAPI loopback → MP2 |
+| Input | Gamepad API / keyboard / touch; WebRTC input on `/play-net` | Win32 keyboard + SDL pad; `/ws` relay → `keybd_event` |
+| Multiplayer | `/mp` lounge + EmulatorJS / WebRTC (`/play-net`) | game 2P split-screen + `/ws` relay |
+| Serve | `_server` on 8080 | `_server` on 8080 |
+
+## Browser arcade (`/play`)
+
+<div className="rr-route"><b>browser (each player)</b>
+  └─ /play page (disc deck)
+       └─ EmulatorJS 4.2.3
+            └─ PCSX-Rearmed (WebAssembly)
+                 ├─ ROM   &lt;- /rom/*.chd   (HTTP Range + cache)
+                 ├─ BIOS  &lt;- /bios/openbios.bin (or HLE)
+                 ├─ canvas + Web Audio
+                 └─ Gamepad API / keyboard / touch</div>
+
+The host is a **file server plus page host**. It does not render the game for
+`/play`. The trade-off is the first CHD download and browser-side performance;
+the win is no host capture, no ffmpeg, and local input latency.
+
+Server modules:
+
+| Module | Role |
+| --- | --- |
+| `src/server.js` | Express + `ws`; page, static and WebSocket routes |
+| `src/game.js` | native cabinet lifecycle, window placement, attach, watchdog |
+| `src/stream.js` | ffmpeg gdigrab capture → MPEG-TS, `/stream` |
+| `src/room.js` | lobby, seats, chat, countdown and relay state |
+| `src/input.js` | PSX pad word → hard-coded virtual-key map |
+| `src/win32.js` | koffi Win32 bindings (window, focus, `keybd_event`) |
+| `src/audio.py` | WASAPI loopback capture → MP2 |
+
+Routes:
+
+| Route | Role |
+| --- | --- |
+| `/` | R4 cabinet ENTER shell: parent audio element, top bar, iframe host |
+| `/welcome`, `/games`, `/multiplayer` | hub, machine check, 2P lounge pages loaded in the shell frame |
+| `/lobby` | old lobby + native host-stream fallback (seats, chat, `/ws`, `/stream`) |
+| `/play`, `/play-net` | single-player and netplay pages; `/play.html`, `/play-net.html` and `/play?netplay=1` are aliases |
+| `/docs` | built field manual (static site) |
+| `/ghosts`, `/api/ghosts` | ghost list/read and WebM write |
+| `/music`, `/api/music` | extracted MP3s + generated soundtrack manifest |
+| `/rom`, `/bios` | disc and BIOS static files |
+| `/emulator`, `/emulator43/data` | self-hosted EmulatorJS 4.2.3 and the pinned 4.3.0-pre snapshot |
+| `/ws`, `/stream` | fallback lobby/input and MPEG-TS video/audio |
+| `/api/status`, `/api/health`, `/qr.svg` | status/health JSON and the LAN QR code |
+| `/api/netplay-config` | relay URL/port/protocol/`gameIds` derived from the request origin; the page still hardcodes `:3010` |
+| `RR4_TLS=1` listener (`:8443`) | optional HTTPS beside `:8080`; same routes and upgrade handler, cert from `scripts/make-cert.ps1` |
+
+`public/play.html` + `js/play.js` is the stable 4.2.3 single-player page.
+`public/play-net.html` + `js/play-net.js` is the 4.3.0-pre netplay page; it also
+parses the `mpRole`/`mpRoom`/`mpRace`/`mpTrackIndex`/`mpCarHost`/`mpCarGuest`
+handoff, auto-hosts or auto-joins the relay room, runs the host VS Battle macro
+and gates guest input. `_server/netplay/ejs-data-nightly/` holds the pinned
+snapshot.
+
+The soundtrack player is a separate browser module
+(`public/js/music-player.js`) owned by the shell document at `/`. It skips itself
+inside an iframe, so `/welcome`, `/multiplayer`, `/lobby`, `/docs` and
+`/play*` never create a second audio element. It fetches the generated manifest
+from `/api/music`, starts the R4 intro after the ENTER gesture, and sets
+`body[data-game]` on the shell so `game-themes.css` can switch the whole chrome
+between `r4`, `rage` and `ridge`. The audio files are served from `/music`.
+
+:::note{title="Version caveat"}
+The 4.3.0-pre snapshot's `version.json` is stale and still reports `4.2.3`.
+Confirm `ejs_version` inside `emulator.min.js` (`4.3.0-pre`) when checking what
+actually runs.
+:::
+
+## Native recompilation
+
+<div className="rr-route"><b>RidgeRacer4Recomp/</b>
+  ├─ Ridge_Racer_4_Recompiled.exe
+  ├─ game.toml            (SLUS-00797, entry PC, text range, track size/MD5/SHA-1)
+  ├─ bios/openbios.bin    (bundled LLE OpenBIOS + license)
+  ├─ settings.toml        (video, audio, controller, memcard)
+  ├─ input.ini            (SDL game-controller mapping)
+  ├─ keybinds.ini         (keyboard → PSX pad; sync with src/input.js manually)
+  └─ OpenGL window        (software/OpenGL renderer)
+<b>../disc/</b>              (workspace-level user-supplied cue/bin/chd)</div>
+
+The disc lives in the workspace-level `../disc`, not inside `RidgeRacer4Recomp/`.
+The recompiler translates the original MIPS into host code; the runtime supplies
+the PSX hardware surface (GPU, SPU, CD, pads, memory cards). The release uses the
+bundled OpenBIOS by default and can use a custom BIOS if the runtime accepts it.
+
+The native build is **USA SLUS-00797** only in this workspace. `game.toml` pins
+entry point, text size, and the disc track size, MD5 and SHA-1.
+
+## Host-stream fallback (`/lobby`)
+
+<div className="rr-route"><b>native RR4-LAN window</b>
+  ├─ Win32 client rect (GetClientRect + ClientToScreen)
+  │    └─ ffmpeg gdigrab → MPEG-1 + MP2 → MPEG-TS
+  │         └─ WebSocket /stream → jsmpeg
+  └─ two native keyboard pads
+       ▲
+       │ keybd_event (foreground)
+  Node input relay
+       ▲
+       │ WebSocket /ws (PSX pad word per seat)
+  browser P1 / P2 / spectators</div>
+
+The server reads the live client rectangle, captures it with ffmpeg, and
+broadcasts the MPEG-TS stream. Seats claim P1/P2; the relay maps each seat's
+active-low pad word to virtual-key codes hard-coded in `src/input.js`. It does
+not read `keybinds.ini` at runtime, so the two files must be kept in sync
+manually. Extra viewers spectate. This page is `/lobby`; `/` is the shell.
+
+Modes: managed launch, test mode (`RR4_NO_AUTOSTART=1`,
+`RR4_STREAM_SOURCE=test`), and attach mode (`RR4_ATTACH=1` plus
+`RR4_ATTACH_PID` or `game.attachPid`).
+
+## Netplay transport (`/play-net`)
+
+<div className="rr-route"><b>host</b>                                  <b>guest</b>
+  EmulatorJS 4.3.0-pre                   EmulatorJS 4.3.0-pre
+    └─ PCSX-Rearmed core                   └─ receives WebRTC video
+         └─ canvas/audio ── WebRTC ──────►   + sends input
+              ▲
+              │ TCP 3010 relay (rooms + signaling)
+              └──────── same gameID, same :3010 ────────┘</div>
+
+The relay is a vendored, locally modified copy of upstream `EmulatorJS-Netplay`
+at commit `9e8a6e6`. Local changes add `/health`, `/list` and ownership-handoff
+behavior; it is not verbatim upstream. It handles room discovery and signaling;
+media is peer to peer. `EJS_netplayICEServers = []` keeps it on LAN host
+candidates.
+
+`play-net.js` drives the capture itself: `canvas.captureStream(0)` +
+`track.requestFrame()` once per core frame (~59 fps encoded, 8 Mbps/60 ceiling,
+keyframe on `race-live`/join/freeze) instead of the bundle's `captureStream(30)`.
+Guest input goes once over the data channel (the Socket.IO copy is the fallback),
+and `getStats()` is sampled every 2 s into the stage log and
+`window.__R4NET.stats`. Measured: guest decoded 57.4 fps, guest presented 42–55,
+0.9–2.5 Mbps, 0 % loss. See
+[Performance and networking](/play/performance).
+
+## 2P lounge transport (`/mp`)
+
+The shell's 2P lobby does not use the 3010 relay. It is a second WebSocket
+endpoint on the page port:
+
+<div className="rr-route"><b>browser A</b>                              <b>browser B</b>
+  /multiplayer (shell frame)            /multiplayer (shell frame)
+    └─ ws://host:8080/mp                  └─ ws://host:8080/mp
+         └─ create / join / ready ────────────►  server room
+              ◄── room state to both sockets ──┘
+                    both ready
+              ◄── type: "race" — raceId, track, cars ──────┘
+   shell loads /play-net?…mpRole…mpRoom…mpRace… for both tabs</div>
+
+- Rooms live in server memory (`mpRooms`): code, host id, players, READY, and the
+  rolled plan. Max two players; a full room leaves `/list`.
+- The server rolls the course index, `raceId`, and per-player `carIndex`, then
+  broadcasts one `race` payload with a per-socket `role`. Neither browser rolls a
+  plan.
+- The heartbeat pings every 20 s and terminates silent sockets; the close handler
+  promotes the remaining player to host, clears READY and deletes empty rooms.
+  Rooms idle past five minutes with no live socket are dropped.
+- The handoff itself is a `postMessage` from the lounge iframe to the shell, which
+  owns the game iframe and the audio element. The reverse direction exists too:
+  the game page posts `rr4-rematch`, and the shell reloads the lounge at
+  `/multiplayer?room=<code>&host=1|0&embedded=1` for another race.
+
+Details and the parameter table: [2P lounge & race handoff](/multiplayer/lounge).
+
+## Ports and paths
+
+| Port | Service | Needed for |
+| --- | --- | --- |
+| 8080 | `_server` HTTP/WS (default; `RR4_PORT` overrides) | `/`, `/welcome`, `/games`, `/multiplayer`, `/play`, `/play-net`, `/lobby`, `/rom`, `/bios` |
+| 8080 | `/mp` lobby socket | shell 2P lounge |
+| 3010 | netplay relay | `/play-net` room discovery/signaling |
+| ephemeral UDP | WebRTC media | `/play-net` between browsers |
+
+8080 is the default, but `RR4_PORT` overrides the listener. The start scripts,
+firewall rules and stop scripts still assume 8080, so a custom port needs manual
+firewall and stop handling.
+
+| Path | Purpose |
+| --- | --- |
+| `disc/` | user's CUE/BIN + CHDs; served at `/rom` and read by the native cabinet as `../disc` |
+| `_server/game/` | isolated native runtime used by the fallback |
+| `_server/public/` | site, EmulatorJS, player JS/CSS |
+| `_server/netplay/` | relay, pinned 4.3.0-pre assets, harnesses |
+| `_runtime/` | logs, screenshots, test captures, memcards |
+| `RidgeRacer4Recomp/` | the native release install; the disc stays outside this folder |
+| `analysis/` | REA evidence JSON |
+
+## Security and legal boundaries
+
+- The disc is **user-supplied** and never committed or redistributed. OpenBIOS is
+  bundled with its license; only a retail BIOS is user-supplied.
+- `/docs`, `/rom`, `/bios`, `/music` and `/ghosts` are LAN-facing static routes; do not
+  expose them to the public internet without a deliberate decision.
+- `POST /api/ghosts` is an unauthenticated LAN write endpoint with an 80 MB WebM
+  limit.
+- `/mp` is an unauthenticated LAN lobby socket: anyone on the subnet can create
+  or join a room, and room codes are not secrets.
+- The native fallback uses global `keybd_event`; treat the host desktop as shared.
+- Netplay is host-authoritative; the host tab is the session owner.
+
+## Verification
+
+| Area | Evidence |
+| --- | --- |
+| `/play` R4 boot | `_server/EJS-BOOT-REPORT.md` (R4 only), `_runtime` screenshots |
+| `/play` R4 and Rage | `_server/PLAY-QA.md` |
+| `/play` original Ridge Racer | `_server/RIDGE-RACER-ORIGINAL.md`, `_runtime/ridge-verify-result.json` |
+| 2P lounge UI + handoff | `_server/test-mp-lobby-ui.mjs` → 33/33 (`_runtime/mp-lobby-ui.json`) |
+| `/mp` transport | `_server/mp-ws-probe.mjs` → 22/22 (`_runtime/mp-lobby-ws.json`; incl. app-level `pong` and a server heartbeat ping on the restarted `:8080`) |
+| Host VS Battle macro | `_server/mp-macro-test.mjs` → 6/6, `harness-verified host-only`, final-frame race check |
+| Two-browser guest P2 | `_server/test-mp-race-e2e.mjs` → `_runtime/mp-race-e2e.json`, 40/40, `harness-verified two-browser` (two contexts on one host) |
+| `/mp` heartbeat + promotion | `_server/mp-heartbeat-probe.mjs 8095` → 10/10, throwaway instance (console only) |
+| `/play-net` R4 2P | `NETPLAY-INTEGRATION.md`; checked-in 21/21, doc-only expanded 33/33 |
+| Native input relay | hard-coded `src/input.js` map exercised offline and in live-browser tests; live native `keybd_event` injection was not verified (`QA-REPORT.md` ran with no native cabinet) |
+| Native game boot | prefer `_runtime/web-cabinet.log`; `RidgeRacer4Recomp/psx_last_run_report.json` is an atexit diagnostic (frame 0), not strong boot evidence |
+| Disc integrity | track size + MD5 + SHA-1 in `game.toml` |
+
+The checked-in netplay harness records 21/21. The 33/33 result is a doc-only
+expanded run. The lounge's 33/33 covers the UI and URL handoff only: the
+`/play-net` document was held by request interception and the emulator never
+booted in that harness. The macro is 6/6 and host-only; its final-frame check
+requires the last capture to be the race (yellow menu fraction 0). The
+two-browser harness (`_runtime/mp-race-e2e.json`, 40/40, `harness-verified
+two-browser`) boots the real emulator in both tabs, matches the plan to the
+lounge roll, reaches `race:live`, records `frames.race.raceLike === true`
+(`yellowPct` 0.1, `nonBlackPct` 64.6 on the current artifact), sees the guest
+stream's `currentTime`
+advance, and records the guest pad on the host core as player 1, index 0, value
+1 with zero player-0 records. It runs two browser contexts on one host; two
+physical machines remain unverified and guest audio is absent. Host boot is 3–4 s
+single-page, 5.4–6.2 s for the cold two-tab lounge path.
